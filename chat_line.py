@@ -28,7 +28,7 @@ def get_openai_response(user_message):
             max_tokens=100,
         )
         return response['choices'][0]['message']['content']
-    except openai.errors.OpenAIError as e:  # ใช้ openai.errors.OpenAIError แทน openai.error
+    except openai.error.openaierror as e:  # ใช้ openai.errors.OpenAIError แทน openai.error
         app.logger.error(f"OpenAI error: {e}")
         return "เกิดข้อผิดพลาดในการติดต่อ OpenAI"
     except Exception as e:
