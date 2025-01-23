@@ -20,7 +20,7 @@ app = Flask(__name__)
 def get_openai_response(user_message):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",  # ใช้ชื่อโมเดลที่ถูกต้อง
+            model="gpt-3.5-turbo",  # ใช้ชื่อโมเดลที่ถูกต้อง
             messages=[
                 {"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"},
                 {"role": "user", "content": user_message}
