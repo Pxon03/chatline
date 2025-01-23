@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import json
 import requests as requests_lib
 import os
-from openai import OpenAI
+import openai
 
 # ดึงค่า API Key และ Line Access Token จาก Environment Variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -12,21 +12,28 @@ LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 if not OPENAI_API_KEY or not LINE_ACCESS_TOKEN:
     raise ValueError("Missing API keys. Please set OPENAI_API_KEY and LINE_ACCESS_TOKEN as environment variables.")
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+# ตั้งค่า API Key ของ OpenAI
+openai.api_key = OPENAI_API_KEY
 
 app = Flask(__name__)
 
 def get_openai_response(user_message):
-    payload = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"},
-            {"role": "user", "content": user_message}
-        ],
-        max_tokens=100,
-    )
-    response = payload.choices[0].message.content
-    return response
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",  # ตรวจสอบว่าชื่อโมเดลนี้มีอยู่จริงใน OpenAI
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"},
+                {"role": "user", "content": user_message}
+            ],
+            max_tokens=100,
+        )
+        return response['choices'][0]['message']['content']
+    except openai.error.AuthenticationError as e:
+        app.logger.error(f"Authentication error: {e}")
+        return "เกิดข้อผิดพลาดในการยืนยันตัวตนกับ OpenAI"
+    except Exception as e:
+        app.logger.error(f"Error getting OpenAI response: {e}")
+        return "เกิดข้อผิดพลาดในการดึงข้อมูลจาก OpenAI"
 
 @app.route('/webhook', methods=['POST', 'GET'])
 def webhook():
@@ -38,31 +45,32 @@ def webhook():
                     if event['type'] == 'message' and event['message']['type'] == 'text':
                         user_message = event['message']['text']
                         response_message = get_openai_response(user_message)
-                        Reply_token = event['replyToken']
-                        ReplyMessage(Reply_token, response_message)
-            return jsonify({"status": "success"}), 200  # ส่งคืน status 200 หลังการดำเนินการเสร็จ
+                        reply_token = event['replyToken']
+                        ReplyMessage(reply_token, response_message)
         except Exception as e:
             app.logger.error(f"Error processing POST request: {e}")
             return jsonify({"error": str(e)}), 500
     elif request.method == "GET":
         return "GET", 200
 
-def ReplyMessage(Reply_token, TextMessage):
+def ReplyMessage(reply_token, text_message):
     LINE_API = 'https://api.line.me/v2/bot/message/reply'
-
     headers = {
         'Content-Type': 'application/json; charset=utf-8',
         'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'
     }
-
     data = {
-        "replyToken": Reply_token,
-        "messages": [{
-            "type": "text",
-            "text": TextMessage
-        }]
+        "replyToken": reply_token,
+        "messages": [{"type": "text", "text": text_message}]
     }
-    response = requests_lib.post(LINE_API, headers=headers, data=json.dumps(data))
+
+    try:
+        response = requests_lib.post(LINE_API, headers=headers, data=json.dumps(data))
+        response.raise_for_status()  # ถ้าเกิดข้อผิดพลาดจาก LINE API จะทำให้เกิด exception
+    except requests_lib.exceptions.RequestException as e:
+        app.logger.error(f"Error sending reply to LINE API: {e}")
+        return jsonify({"error": "Failed to send reply message"}), 500
+
     return response.status_code
 
 if __name__ == "__main__":
