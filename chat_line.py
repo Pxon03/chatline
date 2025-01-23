@@ -20,7 +20,7 @@ app = Flask(__name__)
 def get_openai_response(user_message):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",  # ตรวจสอบว่าชื่อโมเดลนี้มีอยู่จริงใน OpenAI
+            model="gpt-4",  # ใช้ชื่อโมเดลที่ถูกต้อง
             messages=[
                 {"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"},
                 {"role": "user", "content": user_message}
@@ -28,7 +28,7 @@ def get_openai_response(user_message):
             max_tokens=100,
         )
         return response['choices'][0]['message']['content']
-    except openai.OpenAIError as e:  # ใช้ OpenAIError ในกรณีที่เกิดข้อผิดพลาดจาก OpenAI API
+    except openai.error.OpenAIError as e:  # ใช้ OpenAIError ในกรณีที่เกิดข้อผิดพลาดจาก OpenAI API
         app.logger.error(f"OpenAI error: {e}")
         return "เกิดข้อผิดพลาดในการติดต่อ OpenAI"
     except Exception as e:
@@ -47,6 +47,7 @@ def webhook():
                         response_message = get_openai_response(user_message)
                         reply_token = event['replyToken']
                         ReplyMessage(reply_token, response_message)
+            return jsonify({"status": "success"}), 200  # ตอบกลับ 200 OK
         except Exception as e:
             app.logger.error(f"Error processing POST request: {e}")
             return jsonify({"error": str(e)}), 500
@@ -69,7 +70,7 @@ def ReplyMessage(reply_token, text_message):
         response.raise_for_status()  # ถ้าเกิดข้อผิดพลาดจาก LINE API จะทำให้เกิด exception
     except requests_lib.exceptions.RequestException as e:
         app.logger.error(f"Error sending reply to LINE API: {e}")
-        return jsonify({"error": "Failed to send reply message"}), 500
+        return jsonify({"error": "Failed to send reply message"}), 500  # ตอบกลับ 500 ถ้ามีข้อผิดพลาด
 
     return response.status_code
 
