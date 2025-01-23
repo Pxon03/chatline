@@ -40,6 +40,7 @@ def webhook():
                         response_message = get_openai_response(user_message)
                         Reply_token = event['replyToken']
                         ReplyMessage(Reply_token, response_message)
+            return jsonify({"status": "success"}), 200  # ส่งคืน status 200 หลังการดำเนินการเสร็จ
         except Exception as e:
             app.logger.error(f"Error processing POST request: {e}")
             return jsonify({"error": str(e)}), 500
