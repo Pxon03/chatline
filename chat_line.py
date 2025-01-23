@@ -28,9 +28,9 @@ def get_openai_response(user_message):
             max_tokens=100,
         )
         return response['choices'][0]['message']['content']
-    except openai.error.AuthenticationError as e:
-        app.logger.error(f"Authentication error: {e}")
-        return "เกิดข้อผิดพลาดในการยืนยันตัวตนกับ OpenAI"
+    except openai.error.OpenAIError as e:  # ใช้ OpenAIError ในกรณีที่เกิดข้อผิดพลาดจาก OpenAI API
+        app.logger.error(f"OpenAI error: {e}")
+        return "เกิดข้อผิดพลาดในการติดต่อ OpenAI"
     except Exception as e:
         app.logger.error(f"Error getting OpenAI response: {e}")
         return "เกิดข้อผิดพลาดในการดึงข้อมูลจาก OpenAI"
