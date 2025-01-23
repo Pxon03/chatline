@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: chat_line
+    env: python
+    region: Singapore # หรือ frankfurt สำหรับเซิร์ฟเวอร์ยุโรป
+    plan: free  # หรือ starter/pro ตามต้องการ
+    buildCommand: |
+      pip install -r requirements.txt
+    startCommand: |
+      python chat_line.py
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: LINE_ACCESS_TOKEN
+        sync: false
+      - key: PORT
+        value: 5000
