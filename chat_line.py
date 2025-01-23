@@ -20,7 +20,7 @@ app = Flask(__name__)
 def get_openai_response(user_message):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",  # ตรวจสอบว่าชื่อโมเดลนี้มีอยู่จริงใน OpenAI
+            model="gpt-4o-mini",  # ตรวจสอบว่าชื่อโมเดลนี้มีอยู่จริงใน OpenAI
             messages=[
                 {"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"},
                 {"role": "user", "content": user_message}
@@ -28,7 +28,7 @@ def get_openai_response(user_message):
             max_tokens=100,
         )
         return response['choices'][0]['message']['content']
-    except openai.error.OpenAIError as e:  # ใช้ OpenAIError ในกรณีที่เกิดข้อผิดพลาดจาก OpenAI API
+    except openai.OpenAIError as e:  # ใช้ OpenAIError ในกรณีที่เกิดข้อผิดพลาดจาก OpenAI API
         app.logger.error(f"OpenAI error: {e}")
         return "เกิดข้อผิดพลาดในการติดต่อ OpenAI"
     except Exception as e:
