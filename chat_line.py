@@ -1,3 +1,4 @@
+from openai import OpenAI
 from flask import Flask, request, jsonify
 import json
 import requests as requests_lib
