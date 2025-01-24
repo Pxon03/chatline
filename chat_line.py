@@ -23,7 +23,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 def get_openai_response(user_message):
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"},
                 {"role": "user", "content": user_message}
