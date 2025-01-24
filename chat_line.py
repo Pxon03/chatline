@@ -18,24 +18,26 @@ openai.api_key = OPENAI_API_KEY
 
 app = Flask(__name__)
 
+client = OpenAI(api_key=OPENAI_API_KEY)
+
 def get_openai_response(user_message):
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # ใช้ชื่อโมเดลที่ถูกต้อง
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"},
                 {"role": "user", "content": user_message}
             ],
             max_tokens=100,
         )
-        return response['choices'][0]['message']['content']
-    except openai.OpenAIError as e:  # ใช้ openai.errors.OpenAIError แทน openai.error
+        return response.choices[0].message.content
+    except openai.OpenAIError as e:
         app.logger.error(f"OpenAI error: {e}")
         return "เกิดข้อผิดพลาดในการติดต่อ OpenAI"
     except Exception as e:
         app.logger.error(f"Error getting OpenAI response: {e}")
         return "เกิดข้อผิดพลาดในการดึงข้อมูลจาก OpenAI"
-
+        
 @app.route('/webhook', methods=['POST', 'GET']) 
 def webhook():
     if request.method == "POST":
