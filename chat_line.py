@@ -20,24 +20,46 @@ app = Flask(__name__)
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-def get_openai_response(user_message):
+# เก็บประวัติการสนทนา
+conversation_history = {}
+
+def get_openai_response(user_id, user_message):
+    global conversation_history
+    
+    # ดึงประวัติการสนทนาของผู้ใช้จาก memory
+    if user_id in conversation_history:
+        history = conversation_history[user_id]
+    else:
+        history = []
+
+    # เพิ่มข้อความของผู้ใช้
+    history.append({"role": "user", "content": user_message})
+
     try:
+        # เรียก OpenAI API เพื่อให้คำตอบ
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o-mini",  # ใช้โมเดล gpt-4o-mini
             messages=[
-                {"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"},
-                {"role": "user", "content": user_message}
-            ],
-            max_tokens=100,
+                {"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}
+            ] + history,
+            max_tokens=200,  # กำหนดจำนวนโทเค็นสูงสุด
         )
-        return response.choices[0].message.content
-    except openai.OpenAIError as e:
-        app.logger.error(f"OpenAI error: {e}")
-        return "เกิดข้อผิดพลาดในการติดต่อ OpenAI"
-    except Exception as e:
-        app.logger.error(f"Error getting OpenAI response: {e}")
-        return "เกิดข้อผิดพลาดในการดึงข้อมูลจาก OpenAI"
+
+        bot_reply = response.choices[0].message.content
+        history.append({"role": "assistant", "content": bot_reply})
         
+        # เก็บประวัติการสนทนาใหม่กลับไปยัง memory
+        conversation_history[user_id] = history
+
+        # จำกัดจำนวนประวัติการสนทนาเพื่อประหยัดโทเค็น
+        if len(history) > 10:
+            history.pop(0)
+
+        return bot_reply
+    except Exception as e:
+        app.logger.error(f"Error: {e}")
+        return "เกิดข้อผิดพลาด กรุณาลองใหม่"
+
 @app.route('/webhook', methods=['POST', 'GET']) 
 def webhook():
     if request.method == "POST":
@@ -47,7 +69,8 @@ def webhook():
                 for event in req['events']:
                     if event['type'] == 'message' and event['message']['type'] == 'text':
                         user_message = event['message']['text']
-                        response_message = get_openai_response(user_message)
+                        user_id = event['source']['userId']
+                        response_message = get_openai_response(user_id, user_message)
                         reply_token = event['replyToken']
                         ReplyMessage(reply_token, response_message)
             return jsonify({"status": "success"}), 200  # ตอบกลับ 200 OK
