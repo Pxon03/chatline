@@ -4,6 +4,7 @@ from linebot.models import TextSendMessage
 import requests as requests_lib
 import os
 import openai
+import json
 
 # ดึงค่า API Key และ Line Access Token จาก Environment Variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
