@@ -27,7 +27,7 @@ app = Flask(__name__)
 conversation_history = {}
 
 # ลิงก์ Google Form
-GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSd9pRGR6-s7B1PaIr-69y_dB9UZlzuSg_-fIpmQBi5_Q22BMA/viewform?usp=header"  # แทนที่ด้วยลิงก์ Google Form ของคุณ
+GOOGLE_FORM_URL = "https://forms.gle/bVhHWbuNLPYrqqjG7"  # แทนที่ด้วยลิงก์ Google Form ของคุณ
 
 # ฟังก์ชันส่งข้อความตอบกลับ
 def ReplyMessage(reply_token, text_message):
