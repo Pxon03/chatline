@@ -62,21 +62,18 @@ def get_openai_response(user_id, user_message):
     history.append({"role": "user", "content": user_message})
 
     try:
+        # เรียกใช้ API ด้วยโครงสร้างใหม่
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
+            model="gpt-4",  # หรือชื่อโมเดลที่คุณใช้งาน
             messages=[
                 {"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}
             ] + history,
             max_tokens=200,
         )
 
-        bot_reply = response.choices[0].message.content
+        bot_reply = response["choices"][0]["message"]["content"]  # โครงสร้างใหม่
         history.append({"role": "assistant", "content": bot_reply})
         conversation_history[user_id] = history
-
-        # ตรวจสอบคำตอบที่บ่งบอกความเสี่ยง และแจ้งเตือนผู้จัดการ
-        if "เสี่ยงสูง" in bot_reply:  # ปรับตามเงื่อนไขที่คุณต้องการ
-            send_risk_alert(user_id, "รุนแรง")
 
         if len(history) > 10:
             history.pop(0)
@@ -85,6 +82,7 @@ def get_openai_response(user_id, user_message):
     except Exception as e:
         app.logger.error(f"Error: {e}")
         return "เกิดข้อผิดพลาด กรุณาลองใหม่"
+
 
 # ฟังก์ชันส่งลิงก์ Google Form
 def send_survey_link(reply_token):
