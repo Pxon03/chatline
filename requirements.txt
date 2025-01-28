@@ -1,6 +1,6 @@
 Flask
 flask-cors
-openai>=1.60.0
+openai==0.28 
 requests
 gunicorn
 line-bot-sdk
