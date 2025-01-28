@@ -64,7 +64,7 @@ def get_openai_response(user_id, user_message):
     try:
         # เรียกใช้ API ด้วยโครงสร้างใหม่
         response = openai.ChatCompletion.create(
-            model="gpt-4",  # หรือชื่อโมเดลที่คุณใช้งาน
+            model="gpt-4o-mini",  # หรือชื่อโมเดลที่คุณใช้งาน
             messages=[
                 {"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}
             ] + history,
