@@ -13,7 +13,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")  # LINE User ID ของผู้จัดการ
-GOOGLE_SHEETS_CREDENTIALS=credentials/meta-vista-446710-b6-d2f76e23ec67.json # ใส่ Path ไฟล์ JSON Credentials
+GOOGLE_SHEETS_CREDENTIALS = os.getenv("credentials/meta-vista-446710-b6-d2f76e23ec67.json.")  # ใส่ Path ไฟล์ JSON Credentials
 
 # ตรวจสอบค่าที่ต้องใช้
 if not all([OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID, GOOGLE_SHEETS_CREDENTIALS]):
@@ -28,12 +28,14 @@ app = Flask(__name__)
 
 # ตั้งค่า Google Sheets API
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+# แก้ไขตรงนี้ให้ตรงกับ path ของไฟล์ JSON ที่ถูกต้อง
 credentials = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_CREDENTIALS, scope)
 gc = gspread.authorize(credentials)
 
 # ✅ เชื่อมต่อ Google Sheets (มี 2 อัน)
 SHEET_1_ID = "1C7gh_EuNcSnYLDXB1Z681fLCf9f9kX6a0YN6otoElkg"  # ใส่ Google Sheet ID อันแรก
-SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"  # ใส่ Google Sheet ID แบบประเมินการฆ่าตัวตาย (8Q) 
+SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"  # ใส่ Google Sheet ID แบบประเมินการฆ่าตัวตาย (8Q)
 
 SHEET_1 = gc.open_by_key(SHEET_1_ID).worksheet("แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม (9Q)")  # เปลี่ยนชื่อชีตถ้าจำเป็น
 SHEET_2 = gc.open_by_key(SHEET_2_ID).worksheet("แบบประเมินการฆ่าตัวตาย (8Q) ")
