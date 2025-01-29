@@ -7,12 +7,16 @@ import openai
 import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from dotenv import load_dotenv  # นำเข้า dotenv เพื่อโหลดไฟล์ .env
+
+# โหลดตัวแปรจากไฟล์ .env (ถ้ามี)
+load_dotenv()
 
 # ดึงค่า API Key และ Line Access Token จาก Environment Variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
-ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")  # LINE User ID ของผู้จัดการ
+ADMIN_USER_ID = os.getenv("bplpoon")  # LINE User ID ของผู้จัดการ
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("credentials/meta-vista-446710-b6-d2f76e23ec67.json.")  # ใส่ Path ไฟล์ JSON Credentials
 
 # ตรวจสอบค่าที่ต้องใช้
@@ -43,6 +47,7 @@ SHEET_2 = gc.open_by_key(SHEET_2_ID).worksheet("แบบประเมิน�
 # ✅ Google Forms
 GOOGLE_FORM_1 = "https://forms.gle/va6VXDSw9fTayVDD6"  # แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม 
 GOOGLE_FORM_2 = "https://forms.gle/irMiKifUYYKYywku5"  # แบบประเมินการฆ่าตัวตาย (8Q)
+
 # ✅ ลิงก์วิดีโอที่เหมาะสมตามระดับคะแนน
 video_links = {
     "low": "https://youtu.be/zr3quEuGSAE?si=U_jj_2lrITdbuef4",  # ปกติ
