@@ -4,3 +4,5 @@ openai==0.28
 requests
 gunicorn
 line-bot-sdk
+gspread
+oauth2client
