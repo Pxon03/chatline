@@ -37,25 +37,25 @@ scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 credentials = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_CREDENTIALS, scope)
 gc = gspread.authorize(credentials)
 
-# ✅ เชื่อมต่อ Google Sheets (มี 2 อัน)
+# เชื่อมต่อ Google Sheets (มี 2 อัน)
 SHEET_1_ID = "1C7gh_EuNcSnYLDXB1Z681fLCf9f9kX6a0YN6otoElkg"  # ใส่ Google Sheet ID อันแรก
 SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"  # ใส่ Google Sheet ID แบบประเมินการฆ่าตัวตาย (8Q)
 
 SHEET_1 = gc.open_by_key(SHEET_1_ID).worksheet("แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม (9Q)")  # เปลี่ยนชื่อชีตถ้าจำเป็น
-SHEET_2 = gc.open_by_key(SHEET_2_ID).worksheet("แบบประเมินการฆ่าตัวตาย (8Q) ")
+SHEET_2 = gc.open_by_key(SHEET_2_ID).worksheet("แบบประเมินการฆ่าตัวตาย (8Q)")
 
-# ✅ Google Forms
-GOOGLE_FORM_1 = "https://forms.gle/va6VXDSw9fTayVDD6"  # แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม 
+# Google Forms
+GOOGLE_FORM_1 = "https://forms.gle/va6VXDSw9fTayVDD6"  # แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม
 GOOGLE_FORM_2 = "https://forms.gle/irMiKifUYYKYywku5"  # แบบประเมินการฆ่าตัวตาย (8Q)
 
-# ✅ ลิงก์วิดีโอที่เหมาะสมตามระดับคะแนน
+# ลิงก์วิดีโอที่เหมาะสมตามระดับคะแนน
 video_links = {
     "low": "https://youtu.be/zr3quEuGSAE?si=U_jj_2lrITdbuef4",  # ปกติ
     "medium": "https://youtu.be/TYSrIpdd2n4?si=stRQ-szINeeo6rdj",  # มีภาวะเครียด
     "high": "https://youtu.be/wVCtz5nwB0I?si=2dxTcWtcJOHbkq2H"  # ซึมเศร้ารุนแรง
 }
 
-# ✅ ฟังก์ชันดึงคะแนนจาก Google Sheets (รองรับ 2 อัน)
+# ฟังก์ชันดึงคะแนนจาก Google Sheets (รองรับ 2 อัน)
 def get_user_score(user_id):
     try:
         for sheet in [SHEET_1, SHEET_2]:
@@ -67,7 +67,7 @@ def get_user_score(user_id):
         app.logger.error(f"Error fetching score from Google Sheets: {e}")
     return None
 
-# ✅ ฟังก์ชันเลือกวิดีโอที่เหมาะสม
+# ฟังก์ชันเลือกวิดีโอที่เหมาะสม
 def get_relaxing_video(score):
     if score <= 9:
         return video_links["low"]
@@ -76,32 +76,21 @@ def get_relaxing_video(score):
     else:
         return video_links["high"]
 
-# ✅ ฟังก์ชันส่งข้อความตอบกลับ
+# ฟังก์ชันส่งข้อความตอบกลับ
 def ReplyMessage(reply_token, text_message):
-    LINE_API = 'https://api.line.me/v2/bot/message/reply'
-    headers = {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'
-    }
-    data = {
-        "replyToken": reply_token,
-        "messages": [{"type": "text", "text": text_message}]
-    }
     try:
-        response = requests_lib.post(LINE_API, headers=headers, data=json.dumps(data))
-        response.raise_for_status()
-    except requests_lib.exceptions.RequestException as e:
+        line_bot_api.reply_message(reply_token, TextSendMessage(text=text_message))
+    except Exception as e:
         app.logger.error(f"Error sending reply to LINE API: {e}")
         return jsonify({"error": "Failed to send reply message"}), 500
+    return 200
 
-    return response.status_code
-
-# ✅ ฟังก์ชันแจ้งเตือนผู้จัดการเมื่อพบความเสี่ยงสูง
+# ฟังก์ชันแจ้งเตือนผู้จัดการเมื่อพบความเสี่ยงสูง
 def send_risk_alert(user_name, risk_level):
     message = f"แจ้งเตือน: ผู้ใช้งาน {user_name} มีความเสี่ยงระดับ {risk_level} กรุณาตรวจสอบข้อมูลในระบบ!"
     line_bot_api.push_message(ADMIN_USER_ID, TextSendMessage(text=message))
 
-# ✅ Webhook สำหรับ LINE Bot
+# Webhook สำหรับ LINE Bot
 @app.route('/webhook', methods=['POST', 'GET']) 
 def webhook():
     if request.method == "POST":
@@ -114,7 +103,7 @@ def webhook():
                         reply_token = event['replyToken']
                         user_id = event['source']['userId']
 
-                        # ✅ ตรวจจับคะแนนจาก Google Sheets
+                        # ตรวจจับคะแนนจาก Google Sheets
                         score = get_user_score(user_id)
                         if score is not None:
                             video_url = get_relaxing_video(score)
@@ -130,7 +119,7 @@ def webhook():
             return jsonify({"status": "success"}), 200
         except Exception as e:
             app.logger.error(f"Error processing POST request: {e}")
-            return jsonify({"error": str(e)}), 500  # แก้ไขให้ปิดวงเล็บครบถ้วน
+            return jsonify({"error": str(e)}), 500
 
     elif request.method == "GET":
         return "GET", 200
