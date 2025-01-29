@@ -13,7 +13,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")  # LINE User ID ของผู้จัดการ
-GOOGLE_SHEETS_CREDENTIALS = "credentials/meta-vista-446710-b6-d2f76e23ec67.json"# ใส่ Path ไฟล์ JSON Credentials
+GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS", "credentials/meta-vista-446710-b6-d2f76e23ec67.json")  # ใช้ Environment Variable
 
 # ตรวจสอบค่าที่ต้องใช้
 if not all([OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID, GOOGLE_SHEETS_CREDENTIALS]):
@@ -123,10 +123,4 @@ def webhook():
             return jsonify({"status": "success"}), 200
         except Exception as e:
             app.logger.error(f"Error processing POST request: {e}")
-            return jsonify({"error": str(e)}), 500
-    elif request.method == "GET":
-        return "GET", 200
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  
-    app.run(debug=True, host="0.0.0.0", port=port)
+            return jsonify({"error":
