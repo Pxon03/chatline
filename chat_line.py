@@ -19,7 +19,11 @@ ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")  # LINE User ID ของผู�
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("path_to_your_credentials.json")  # ใส่ Path ไฟล์ JSON Credentials จาก Environment Variables
 
 # ตรวจสอบค่าที่ต้องใช้
-print(OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID, GOOGLE_SHEETS_CREDENTIALS)  # ตรวจสอบค่าตัวแปร
+print(f"OPENAI_API_KEY: {OPENAI_API_KEY}")
+print(f"LINE_ACCESS_TOKEN: {LINE_ACCESS_TOKEN}")
+print(f"LINE_CHANNEL_SECRET: {LINE_CHANNEL_SECRET}")
+print(f"ADMIN_USER_ID: {ADMIN_USER_ID}")
+print(f"GOOGLE_SHEETS_CREDENTIALS: {GOOGLE_SHEETS_CREDENTIALS}")
 
 if not all([OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID, GOOGLE_SHEETS_CREDENTIALS]):
     raise ValueError("Missing required environment variables!")
