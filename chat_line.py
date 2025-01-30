@@ -17,7 +17,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 LINE_ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")  # แก้ให้ตรงกับ .env
-GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")  # JSON String จาก .env
+GOOGLE_SHEETS_CREDENTIALS_PATH = os.getenv("GOOGLE_SHEETS_CREDENTIALS")  # Path ไปยังไฟล์ JSON
 
 # ตรวจสอบค่าที่ต้องใช้
 missing_vars = [var for var, value in {
@@ -25,7 +25,7 @@ missing_vars = [var for var, value in {
     "LINE_ACCESS_TOKEN": LINE_ACCESS_TOKEN,
     "LINE_CHANNEL_SECRET": LINE_CHANNEL_SECRET,
     "LINE_ADMIN_USER_ID": LINE_ADMIN_USER_ID,
-    "GOOGLE_SHEETS_CREDENTIALS": GOOGLE_SHEETS_CREDENTIALS,
+    "GOOGLE_SHEETS_CREDENTIALS": GOOGLE_SHEETS_CREDENTIALS_PATH,
 }.items() if not value]
 
 if missing_vars:
@@ -42,8 +42,7 @@ app = Flask(__name__)
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
 try:
-    credentials_dict = json.loads(GOOGLE_SHEETS_CREDENTIALS)  # โหลด JSON จาก ENV
-    credentials = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+    credentials = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_CREDENTIALS_PATH, scope)
     gc = gspread.authorize(credentials)
 except Exception as e:
     raise ValueError(f"Error loading Google Sheets credentials: {e}")
