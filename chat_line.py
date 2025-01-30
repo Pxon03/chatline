@@ -17,7 +17,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 ADMIN_USER_ID = os.getenv("ADMIN_USER_ID")  # LINE User ID ของผู้จัดการ
-GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")  # ใส่ Path ไฟล์ JSON Credentials จาก Environment Variables
+GOOGLE_SHEETS_CREDENTIALS = os.getenv("credentials/meta-vista-446710-b6-d2f76e23ec67.json")  # ใส่ Path ไฟล์ JSON Credentials จาก Environment Variables
 
 # ตรวจสอบค่าที่ต้องใช้
 print(OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID, GOOGLE_SHEETS_CREDENTIALS)  # ตรวจสอบค่าตัวแปร
