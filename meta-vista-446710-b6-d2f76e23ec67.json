@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "meta-vista-446710-b6",
+  "private_key_id": "d2f76e23ec67c47800f86957558b9eaab4ef2cf2",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCZcWcZgRVHhu6m\nT/RwNmWfA//5tW+17KCia7C+bXj4IdulyLPk20pFgzOou6xgxJUUmZfcfAs1MKvZ\nyX/+wbpeVaaIA3ftBycmIvgl3MJYDZC16ZOnvO4xwN46H8mWpRsEoppUh2viNV40\n+SzQIOMknpvrhfxq1NYqUhN6t1PJn2jAtwk8RktpK/X7o1/VrK+aS7j4eHWu16nY\nPOF6h5DyIlUoQwU6K1UcINeneFoO2vEsGwFHEei+5mzO778GEs6SKVdJRwKXycIu\nrX1BdFj1oTInH7T7E2xTmjrV8gpuGIs1ui3imRsnCFOqYPhWp49QnqaoosXOYY7L\nxuxrE7YZAgMBAAECggEADM8LXvToUJX6Ln5upn5X+c/06oSjjGFyIFTShnbvefEj\nm4F3SOOoXcifw5ZVA6ftVPCkXWaqbdiAA/he26aS1uSZ9/EoLexir3uMUObOf1i0\ni4bxyTcLgDI8Ksh0BMQIDxk+vk8mqZWwZUYmoEIai/hEhkLjSQy2ywYac6xBjYtE\nlrN5gASsbdIbzNaEIy8G1Tor/UUkh65PyaCqQVs8G+LOyyBxHLFrop08d5ICfzgh\nIbnUysuwO1Q6jLp2EA3mOOnVZVV/cPz+uT1kcgutPsyLF9ATwx6GvVg0FWBQ0mW3\nm4+OZZFKuLzoRFRfIUQuKABI2Z4tKf+ueAzSCZIqwQKBgQDX4CVRmIOIky3wcuv4\n4OTi1Uoj45xClwvKadyr1q2WmcoQifXN7iXE0b16cPWXX5Au6PPjiq9ZMngTigR3\nRi58GZ3eEG15djx1gz7o6vtJJyeNklcUUvmJmH6gUDCviUK1k5u6HR8SYc6NP36r\nD8LQAEmwsK7vM3vTpv0FQN+U4QKBgQC19pI+/hnNDI18wbtweC7UF7oDEwFvDnHm\nhflccXdWTU4j74OLc0HavRxEnrAN4lm0c/wBjE4ESbFILfpGozJxqwWFo1vMVA7E\n+oJIarqnXN5Tb1QeL1W7AjDo+yq8//li4W+JfWeVccYQb16o3s732zJgBU+ftQcM\n0vSNSi2QOQKBgQCTGegUK+sle7VILediVk1hzJmSzxzBu4+LRIvchJMRFoa8smXP\nB8Kw1YNaFfMkTThA3viiSvSlwWBVYC0e4bH3WrVahrMym0EjimWp7cWB2a54KAoy\njUABZOqUb1BdrRjKBmWNcx6jNga79VJpWnoTpr6QKjVqRhjQ5u9vTv+LwQKBgFRU\nmwCwuPpr9+K60ojUWjeXa3DjTQXQNv90VdX/DCSmHTHQXjGxz/J1NHWk6cj1f0d/\nfWqmQL4B/TSLgnNcTRObBCskQ3YV+uZVhy3SsQDBrJQUg3Kd02ihIlPHm84N/+FQ\nw2WABhKfsQCK7N7srBT4tIcFzxogRs0ts4MLvsQZAoGAIzxWoFRjGzGgF8dkIHTk\nAfI+i52If6ziXn4YVsh0Phcj5IQGC4WpsTzBM7qIfugvrXTiZJjJ8aybJOxsHTJF\neewymYmU6pjdi7Ow4HV3bNmGnhGyEn2sykFOQ0n0s5n7OB0WTxoF3H3A82P/XCB1\nI3Jc26dxFxj/FUwIsmJH+po=\n-----END PRIVATE KEY-----\n",
+  "client_email": "flask-bot-service@meta-vista-446710-b6.iam.gserviceaccount.com",
+  "client_id": "101495978238055447664",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/flask-bot-service%40meta-vista-446710-b6.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
