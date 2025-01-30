@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
-import requests as requests_lib
 import os
 import openai
 import json
@@ -16,8 +15,8 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
-ADMIN_USER_ID = os.getenv("ADMIN_USER_ID")  # LINE User ID ของผู้จัดการ
-GOOGLE_SHEETS_CREDENTIALS = os.getenv("path_to_your_meta-vista-446710-b6-d2f76e23ec67.json")  # ใส่ Path ไฟล์ JSON Credentials จาก Environment Variables
+ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")  # LINE User ID ของผู้จัดการ
+GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")  # ใส่ Path ไฟล์ JSON Credentials จาก Environment Variables
 
 # ตรวจสอบค่าที่ต้องใช้
 print(OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID, GOOGLE_SHEETS_CREDENTIALS)  # ตรวจสอบค่าตัวแปร
@@ -57,75 +56,8 @@ video_links = {
     "high": "https://youtu.be/wVCtz5nwB0I?si=2dxTcWtcJOHbkq2H"  # ซึมเศร้ารุนแรง
 }
 
-# ฟังก์ชันดึงคะแนนจาก Google Sheets (รองรับ 2 อัน)
-def get_user_score(user_id):
-    try:
-        for sheet in [SHEET_1, SHEET_2]:
-            records = sheet.get_all_records()
-            for row in records:
-                if row["user_id"] == user_id:
-                    return int(row["score"])
-    except Exception as e:
-        app.logger.error(f"Error fetching score from Google Sheets: {e}")
-    return None
-
-# ฟังก์ชันเลือกวิดีโอที่เหมาะสม
-def get_relaxing_video(score):
-    if score <= 9:
-        return video_links["low"]
-    elif score <= 19:
-        return video_links["medium"]
-    else:
-        return video_links["high"]
-
-# ฟังก์ชันส่งข้อความตอบกลับ
-def ReplyMessage(reply_token, text_message):
-    try:
-        line_bot_api.reply_message(reply_token, TextSendMessage(text=text_message))
-    except Exception as e:
-        app.logger.error(f"Error sending reply to LINE API: {e}")
-        return jsonify({"error": "Failed to send reply message"}), 500
-    return 200
-
-# ฟังก์ชันแจ้งเตือนผู้จัดการเมื่อพบความเสี่ยงสูง
-def send_risk_alert(user_name, risk_level):
-    message = f"แจ้งเตือน: ผู้ใช้งาน {user_name} มีความเสี่ยงระดับ {risk_level} กรุณาตรวจสอบข้อมูลในระบบ!"
-    line_bot_api.push_message(ADMIN_USER_ID, TextSendMessage(text=message))
-
 # Webhook สำหรับ LINE Bot
 @app.route('/webhook', methods=['POST', 'GET']) 
 def webhook():
-    if request.method == "POST":
-        try:
-            req = request.json
-            if 'events' in req:
-                for event in req['events']:
-                    if event['type'] == 'message' and event['message']['type'] == 'text':
-                        user_message = event['message']['text']
-                        reply_token = event['replyToken']
-                        user_id = event['source']['userId']
-
-                        # ตรวจจับคะแนนจาก Google Sheets
-                        score = get_user_score(user_id)
-                        if score is not None:
-                            video_url = get_relaxing_video(score)
-                            ReplyMessage(reply_token, f"นี่คือวิดีโอที่เหมาะกับคุณ: {video_url}")
-                        elif "แบบสอบถาม 1" in user_message:
-                            ReplyMessage(reply_token, f"กรุณากรอกแบบสอบถามที่นี่: {GOOGLE_FORM_1}")
-                        elif "แบบสอบถาม 2" in user_message:
-                            ReplyMessage(reply_token, f"กรุณากรอกแบบสอบถามที่นี่: {GOOGLE_FORM_2}")
-                        else:
-                            response_message = get_openai_response(user_id, user_message)
-                            ReplyMessage(reply_token, response_message)
-
-            return jsonify({"status": "success"}), 200
-        except Exception as e:
-            app.logger.error(f"Error processing POST request: {e}")
-            return jsonify({"error": str(e)}), 500
-
-    elif request.method == "GET":
-        return "GET", 200
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  
-    app.run(debug=True, host="0.0.0.0", port=port)
+    # โค้ดสำหรับ webhook และฟังก์ชันอื่นๆ ...
+    pass
