@@ -1,13 +1,12 @@
 from flask import Flask, request, jsonify
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
-import requests as requests_lib
 import os
 import openai
 import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from dotenv import load_dotenv  # โหลด dotenv เพื่ออ่านค่า .env
+from dotenv import load_dotenv
 
 # โหลดตัวแปรจากไฟล์ .env (ถ้ามี)
 load_dotenv()
@@ -16,8 +15,8 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
-LINE_ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")  # แก้ให้ตรงกับ .env
-GOOGLE_SHEETS_CREDENTIALS_PATH = os.getenv("GOOGLE_SHEETS_CREDENTIALS")  # Path ไปยังไฟล์ JSON
+LINE_ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")
+GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
 
 # ตรวจสอบค่าที่ต้องใช้
 missing_vars = [var for var, value in {
@@ -25,7 +24,7 @@ missing_vars = [var for var, value in {
     "LINE_ACCESS_TOKEN": LINE_ACCESS_TOKEN,
     "LINE_CHANNEL_SECRET": LINE_CHANNEL_SECRET,
     "LINE_ADMIN_USER_ID": LINE_ADMIN_USER_ID,
-    "GOOGLE_SHEETS_CREDENTIALS": GOOGLE_SHEETS_CREDENTIALS_PATH,
+    "GOOGLE_SHEETS_CREDENTIALS": GOOGLE_SHEETS_CREDENTIALS,
 }.items() if not value]
 
 if missing_vars:
@@ -42,8 +41,11 @@ app = Flask(__name__)
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
 try:
-    credentials = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_CREDENTIALS_PATH, scope)
+    credentials_json = json.loads(GOOGLE_SHEETS_CREDENTIALS)
+    credentials = ServiceAccountCredentials.from_json_keyfile_dict(credentials_json, scope)
     gc = gspread.authorize(credentials)
+except json.JSONDecodeError:
+    raise ValueError("Invalid JSON format in GOOGLE_SHEETS_CREDENTIALS")
 except Exception as e:
     raise ValueError(f"Error loading Google Sheets credentials: {e}")
 
@@ -69,19 +71,9 @@ def webhook():
                         user_message = event['message']['text']
                         reply_token = event['replyToken']
                         user_id = event['source']['userId']
-
-                        # ตรวจจับคะแนนจาก Google Sheets
-                        score = get_user_score(user_id)
-                        if score is not None:
-                            video_url = get_relaxing_video(score)
-                            ReplyMessage(reply_token, f"นี่คือวิดีโอที่เหมาะกับคุณ: {video_url}")
-                        elif "แบบสอบถาม 1" in user_message:
-                            ReplyMessage(reply_token, f"กรุณากรอกแบบสอบถามที่นี่: {GOOGLE_FORM_1}")
-                        elif "แบบสอบถาม 2" in user_message:
-                            ReplyMessage(reply_token, f"กรุณากรอกแบบสอบถามที่นี่: {GOOGLE_FORM_2}")
-                        else:
-                            response_message = get_openai_response(user_id, user_message)
-                            ReplyMessage(reply_token, response_message)
+                        
+                        response_message = f"คุณส่งข้อความว่า: {user_message}"
+                        ReplyMessage(reply_token, response_message)
 
             return jsonify({"status": "success"}), 200
         except Exception as e:
@@ -90,6 +82,9 @@ def webhook():
 
     elif request.method == "GET":
         return "GET", 200
+
+def ReplyMessage(reply_token, text):
+    line_bot_api.reply_message(reply_token, TextSendMessage(text=text))
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))  
