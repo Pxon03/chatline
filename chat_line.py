@@ -100,13 +100,15 @@ def send_risk_alert(user_name, risk_level):
     line_bot_api.push_message(ADMIN_USER_ID, TextSendMessage(text=message))
 
 # Webhook สำหรับ LINE Bot
-@app.route('/webhook', methods=['POST', 'GET']) 
+@app.route('/webhook', methods=['POST', 'GET'])
 def webhook():
     if request.method == "POST":
         try:
             req = request.json
+            app.logger.info(f"Received request: {req}")
             if 'events' in req:
                 for event in req['events']:
+                    app.logger.info(f"Processing event: {event}")
                     if event['type'] == 'message' and event['message']['type'] == 'text':
                         user_message = event['message']['text']
                         reply_token = event['replyToken']
