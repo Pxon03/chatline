@@ -7,7 +7,7 @@ import openai
 import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from dotenv import load_dotenv  # นำเข้า dotenv เพื่อโหลดไฟล์ .env
+from dotenv import load_dotenv  # โหลด dotenv เพื่ออ่านค่า .env
 
 # โหลดตัวแปรจากไฟล์ .env (ถ้ามี)
 load_dotenv()
@@ -16,12 +16,20 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
-ADMIN_USER_ID = os.getenv("bplpoon")  # LINE User ID ของผู้จัดการ
-GOOGLE_SHEETS_CREDENTIALS = os.getenv("credentials/meta-vista-446710-b6-d2f76e23ec67.json.")  # ใส่ Path ไฟล์ JSON Credentials
+LINE_ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")  # แก้ให้ตรงกับ .env
+GOOGLE_SHEETS_CREDENTIALS_PATH = os.getenv("GOOGLE_SHEETS_CREDENTIALS")  # Path ไปยังไฟล์ JSON
 
 # ตรวจสอบค่าที่ต้องใช้
-if not all([OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID, GOOGLE_SHEETS_CREDENTIALS]):
-    raise ValueError("Missing required environment variables!")
+missing_vars = [var for var, value in {
+    "OPENAI_API_KEY": OPENAI_API_KEY,
+    "LINE_ACCESS_TOKEN": LINE_ACCESS_TOKEN,
+    "LINE_CHANNEL_SECRET": LINE_CHANNEL_SECRET,
+    "LINE_ADMIN_USER_ID": LINE_ADMIN_USER_ID,
+    "GOOGLE_SHEETS_CREDENTIALS": GOOGLE_SHEETS_CREDENTIALS_PATH,
+}.items() if not value]
+
+if missing_vars:
+    raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
 # ตั้งค่า OpenAI และ LINE Bot API
 openai.api_key = OPENAI_API_KEY
@@ -33,65 +41,24 @@ app = Flask(__name__)
 # ตั้งค่า Google Sheets API
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-# แก้ไขตรงนี้ให้ตรงกับ path ของไฟล์ JSON ที่ถูกต้อง
-credentials = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_CREDENTIALS, scope)
-gc = gspread.authorize(credentials)
+try:
+    credentials = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_CREDENTIALS_PATH, scope)
+    gc = gspread.authorize(credentials)
+except Exception as e:
+    raise ValueError(f"Error loading Google Sheets credentials: {e}")
 
 # เชื่อมต่อ Google Sheets (มี 2 อัน)
-SHEET_1_ID = "1C7gh_EuNcSnYLDXB1Z681fLCf9f9kX6a0YN6otoElkg"  # ใส่ Google Sheet ID อันแรก
-SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"  # ใส่ Google Sheet ID แบบประเมินการฆ่าตัวตาย (8Q)
+SHEET_1_ID = "1C7gh_EuNcSnYLDXB1Z681fLCf9f9kX6a0YN6otoElkg"
+SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"
 
-SHEET_1 = gc.open_by_key(SHEET_1_ID).worksheet("แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม (9Q)")  # เปลี่ยนชื่อชีตถ้าจำเป็น
-SHEET_2 = gc.open_by_key(SHEET_2_ID).worksheet("แบบประเมินการฆ่าตัวตาย (8Q)")
-
-# Google Forms
-GOOGLE_FORM_1 = "https://forms.gle/va6VXDSw9fTayVDD6"  # แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม
-GOOGLE_FORM_2 = "https://forms.gle/irMiKifUYYKYywku5"  # แบบประเมินการฆ่าตัวตาย (8Q)
-
-# ลิงก์วิดีโอที่เหมาะสมตามระดับคะแนน
-video_links = {
-    "low": "https://youtu.be/zr3quEuGSAE?si=U_jj_2lrITdbuef4",  # ปกติ
-    "medium": "https://youtu.be/TYSrIpdd2n4?si=stRQ-szINeeo6rdj",  # มีภาวะเครียด
-    "high": "https://youtu.be/wVCtz5nwB0I?si=2dxTcWtcJOHbkq2H"  # ซึมเศร้ารุนแรง
-}
-
-# ฟังก์ชันดึงคะแนนจาก Google Sheets (รองรับ 2 อัน)
-def get_user_score(user_id):
-    try:
-        for sheet in [SHEET_1, SHEET_2]:
-            records = sheet.get_all_records()
-            for row in records:
-                if row["user_id"] == user_id:
-                    return int(row["score"])
-    except Exception as e:
-        app.logger.error(f"Error fetching score from Google Sheets: {e}")
-    return None
-
-# ฟังก์ชันเลือกวิดีโอที่เหมาะสม
-def get_relaxing_video(score):
-    if score <= 9:
-        return video_links["low"]
-    elif score <= 19:
-        return video_links["medium"]
-    else:
-        return video_links["high"]
-
-# ฟังก์ชันส่งข้อความตอบกลับ
-def ReplyMessage(reply_token, text_message):
-    try:
-        line_bot_api.reply_message(reply_token, TextSendMessage(text=text_message))
-    except Exception as e:
-        app.logger.error(f"Error sending reply to LINE API: {e}")
-        return jsonify({"error": "Failed to send reply message"}), 500
-    return 200
-
-# ฟังก์ชันแจ้งเตือนผู้จัดการเมื่อพบความเสี่ยงสูง
-def send_risk_alert(user_name, risk_level):
-    message = f"แจ้งเตือน: ผู้ใช้งาน {user_name} มีความเสี่ยงระดับ {risk_level} กรุณาตรวจสอบข้อมูลในระบบ!"
-    line_bot_api.push_message(ADMIN_USER_ID, TextSendMessage(text=message))
+try:
+    SHEET_1 = gc.open_by_key(SHEET_1_ID).worksheet("แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม (9Q)")
+    SHEET_2 = gc.open_by_key(SHEET_2_ID).worksheet("แบบประเมินการฆ่าตัวตาย (8Q)")
+except Exception as e:
+    raise ValueError(f"Error accessing Google Sheets: {e}")
 
 # Webhook สำหรับ LINE Bot
-@app.route('/webhook', methods=['POST', 'GET']) 
+@app.route('/webhook', methods=['POST', 'GET'])
 def webhook():
     if request.method == "POST":
         try:
