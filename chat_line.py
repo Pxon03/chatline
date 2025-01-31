@@ -5,23 +5,16 @@ import requests as requests_lib
 import os
 import openai
 import json
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from dotenv import load_dotenv  # นำเข้า dotenv เพื่อโหลดไฟล์ .env
-
-# โหลดตัวแปรจากไฟล์ .env (ถ้ามี)
-load_dotenv()
 
 # ดึงค่า API Key และ Line Access Token จาก Environment Variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
-ADMIN_USER_ID = os.getenv("bplpoon")  # LINE User ID ของผู้จัดการ
-GOOGLE_SHEETS_CREDENTIALS = os.getenv("credentials/meta-vista-446710-b6-d2f76e23ec67.json.")  # ใส่ Path ไฟล์ JSON Credentials
+ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")  # LINE User ID ของผู้จัดการ
 
-# ตรวจสอบค่าที่ต้องใช้
-if not all([OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID, GOOGLE_SHEETS_CREDENTIALS]):
-    raise ValueError("Missing required environment variables!")
+# ตรวจสอบว่ามีการตั้งค่า ENV Variable หรือไม่
+if not OPENAI_API_KEY or not LINE_ACCESS_TOKEN or not LINE_CHANNEL_SECRET or not ADMIN_USER_ID:
+    raise ValueError("Missing API keys. Please set OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, and LINE_ADMIN_USER_ID as environment variables.")
 
 # ตั้งค่า OpenAI และ LINE Bot API
 openai.api_key = OPENAI_API_KEY
@@ -30,60 +23,76 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 app = Flask(__name__)
 
-# ตั้งค่า Google Sheets API
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+# เก็บประวัติการสนทนา
+conversation_history = {}
 
-# แก้ไขตรงนี้ให้ตรงกับ path ของไฟล์ JSON ที่ถูกต้อง
-credentials = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_CREDENTIALS, scope)
-gc = gspread.authorize(credentials)
-
-# เชื่อมต่อ Google Sheets (มี 2 อัน)
-SHEET_1_ID = "1C7gh_EuNcSnYLDXB1Z681fLCf9f9kX6a0YN6otoElkg"  # ใส่ Google Sheet ID อันแรก
-SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"  # ใส่ Google Sheet ID แบบประเมินการฆ่าตัวตาย (8Q)
-
-SHEET_1 = gc.open_by_key(SHEET_1_ID).worksheet("แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม (9Q)")  # เปลี่ยนชื่อชีตถ้าจำเป็น
-SHEET_2 = gc.open_by_key(SHEET_2_ID).worksheet("แบบประเมินการฆ่าตัวตาย (8Q)")
-
-# Google Forms
-GOOGLE_FORM_1 = "https://forms.gle/va6VXDSw9fTayVDD6"  # แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม
-GOOGLE_FORM_2 = "https://forms.gle/irMiKifUYYKYywku5"  # แบบประเมินการฆ่าตัวตาย (8Q)
-
-# ลิงก์วิดีโอที่เหมาะสมตามระดับคะแนน
-video_links = {
-    "low": "https://youtu.be/zr3quEuGSAE?si=U_jj_2lrITdbuef4",  # ปกติ
-    "medium": "https://youtu.be/TYSrIpdd2n4?si=stRQ-szINeeo6rdj",  # มีภาวะเครียด
-    "high": "https://youtu.be/wVCtz5nwB0I?si=2dxTcWtcJOHbkq2H"  # ซึมเศร้ารุนแรง
-}
-
-# ฟังก์ชันดึงคะแนนจาก Google Sheets (รองรับ 2 อัน)
-def get_user_score(user_id):
-    try:
-        for sheet in [SHEET_1, SHEET_2]:
-            records = sheet.get_all_records()
-            for row in records:
-                if row["user_id"] == user_id:
-                    return int(row["score"])
-    except Exception as e:
-        app.logger.error(f"Error fetching score from Google Sheets: {e}")
-    return None
-
-# ฟังก์ชันเลือกวิดีโอที่เหมาะสม
-def get_relaxing_video(score):
-    if score <= 9:
-        return video_links["low"]
-    elif score <= 19:
-        return video_links["medium"]
-    else:
-        return video_links["high"]
+# ลิงก์ Google Form
+GOOGLE_FORM_URL = "https://forms.gle/bVhHWbuNLPYrqqjG7"  # แทนที่ด้วยลิงก์ Google Form ของคุณ
 
 # ฟังก์ชันส่งข้อความตอบกลับ
 def ReplyMessage(reply_token, text_message):
+    LINE_API = 'https://api.line.me/v2/bot/message/reply'
+    headers = {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'
+    }
+    data = {
+        "replyToken": reply_token,
+        "messages": [{"type": "text", "text": text_message}]
+    }
+
     try:
-        line_bot_api.reply_message(reply_token, TextSendMessage(text=text_message))
-    except Exception as e:
+        response = requests_lib.post(LINE_API, headers=headers, data=json.dumps(data))
+        response.raise_for_status()  # ถ้าเกิดข้อผิดพลาดจาก LINE API จะทำให้เกิด exception
+    except requests_lib.exceptions.RequestException as e:
         app.logger.error(f"Error sending reply to LINE API: {e}")
-        return jsonify({"error": "Failed to send reply message"}), 500
-    return 200
+        return jsonify({"error": "Failed to send reply message"}), 500  # ตอบกลับ 500 ถ้ามีข้อผิดพลาด
+
+    return response.status_code
+
+# ฟังก์ชัน OpenAI สำหรับประมวลผลข้อความ
+def get_openai_response(user_id, user_message):
+    global conversation_history
+    
+    if user_id in conversation_history:
+        history = conversation_history[user_id]
+    else:
+        history = []
+
+    history.append({"role": "user", "content": user_message})
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",  
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}
+            ] + history,
+            max_tokens=200,  # เพิ่ม token ขึ้นเล็กน้อย
+            temperature=0.7,
+            stop=["\n\n"]  # ให้ AI หยุดตอบเมื่อจบย่อหน้า
+        )
+
+        bot_reply = response["choices"][0]["message"]["content"]
+
+        # ถ้าตอบขาดตอน ให้เติมข้อความเพิ่มเติม
+        if bot_reply.endswith("...") or len(bot_reply) >= 190:  
+            bot_reply += " ถ้าต้องการรายละเอียดเพิ่มเติม แจ้งให้ฉันทราบได้นะ!"
+
+        history.append({"role": "assistant", "content": bot_reply})
+        conversation_history[user_id] = history
+
+        if len(history) > 10:
+            history.pop(0)
+
+        return bot_reply
+    except Exception as e:
+        app.logger.error(f"Error: {e}")
+        return "เกิดข้อผิดพลาด กรุณาลองใหม่"
+
+# ฟังก์ชันส่งลิงก์ Google Form
+def send_survey_link(reply_token):
+    message = f"กรุณากรอกแบบสอบถามที่นี่: {GOOGLE_FORM_URL}"
+    ReplyMessage(reply_token, message)
 
 # ฟังก์ชันแจ้งเตือนผู้จัดการเมื่อพบความเสี่ยงสูง
 def send_risk_alert(user_name, risk_level):
@@ -101,29 +110,23 @@ def webhook():
                     if event['type'] == 'message' and event['message']['type'] == 'text':
                         user_message = event['message']['text']
                         reply_token = event['replyToken']
-                        user_id = event['source']['userId']
 
-                        # ตรวจจับคะแนนจาก Google Sheets
-                        score = get_user_score(user_id)
-                        if score is not None:
-                            video_url = get_relaxing_video(score)
-                            ReplyMessage(reply_token, f"นี่คือวิดีโอที่เหมาะกับคุณ: {video_url}")
-                        elif "แบบสอบถาม 1" in user_message:
-                            ReplyMessage(reply_token, f"กรุณากรอกแบบสอบถามที่นี่: {GOOGLE_FORM_1}")
-                        elif "แบบสอบถาม 2" in user_message:
-                            ReplyMessage(reply_token, f"กรุณากรอกแบบสอบถามที่นี่: {GOOGLE_FORM_2}")
+                        # หากข้อความคือ "แบบสอบถาม" ให้ส่งลิงก์ Google Form
+                        if "แบบสอบถาม" in user_message:
+                            send_survey_link(reply_token)
                         else:
+                            # เรียกฟังก์ชัน AI สำหรับตอบคำถามทั่วไป
+                            user_id = event['source']['userId']
                             response_message = get_openai_response(user_id, user_message)
                             ReplyMessage(reply_token, response_message)
 
-            return jsonify({"status": "success"}), 200
+            return jsonify({"status": "success"}), 200  # ตอบกลับ 200 OK
         except Exception as e:
             app.logger.error(f"Error processing POST request: {e}")
             return jsonify({"error": str(e)}), 500
-
     elif request.method == "GET":
         return "GET", 200
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  
+    port = int(os.environ.get("PORT", 5000))  # รองรับ PORT จาก Render
     app.run(debug=True, host="0.0.0.0", port=port)
