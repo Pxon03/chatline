@@ -67,12 +67,11 @@ def get_openai_response(user_id, user_message):
         return "เกิดข้อผิดพลาด กรุณาลองใหม่"
 
 # Webhook สำหรับ LINE Bot
-@app.route('/', methods=['GET'])
-def home():
-    return "Line Bot Running", 200
-
-@app.route('/webhook', methods=['POST']) 
+@app.route('/webhook', methods=['POST', 'GET']) 
 def webhook():
+    if request.method == "GET":
+        return "Webhook endpoint is active", 200  # ✅ ตอบกลับถ้าเป็น GET
+
     try:
         req = request.json
         if not req or 'events' not in req:
@@ -83,21 +82,22 @@ def webhook():
                 reply_token = event.get('replyToken')
                 user_message = event['message']['text']
                 user_id = event['source'].get('userId')
-                
+
                 if not reply_token or not user_id:
                     app.logger.error("Missing replyToken or userId")
                     continue
-                
+
                 if "แบบสอบถาม" in user_message:
                     ReplyMessage(reply_token, f"กรุณากรอกแบบสอบถามที่นี่: {GOOGLE_FORM_URL}")
                 else:
                     response_message = get_openai_response(user_id, user_message)
                     ReplyMessage(reply_token, response_message)
-        
+
         return jsonify({"status": "success"}), 200
     except Exception as e:
         app.logger.error(f"Webhook error: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
