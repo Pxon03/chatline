@@ -62,7 +62,7 @@ def get_openai_response(user_id, user_message):
         )
         bot_reply = response["choices"][0]["message"]["content"]
         history.append({"role": "assistant", "content": bot_reply})
-        conversation_history[user_id] = history[-10:]
+        conversation_history[user_id] = history[-10:]  # เก็บประวัติแค่ 10 ข้อความล่าสุด
         return bot_reply
     except Exception as e:
         app.logger.error(f"Error: {e}")
@@ -90,11 +90,12 @@ def webhook():
                     user_message = message.get('text')
                     user_id = event.get('source', {}).get('userId')
 
-                    # ข้าม event ถ้าเป็นโหมด standby
+                    # ตรวจสอบว่าเหตุการณ์อยู่ในโหมด standby หรือไม่
                     if event_mode == "standby":
                         app.logger.info("Skipping event in standby mode")
                         continue
 
+                    # ข้าม event ถ้าไม่มีข้อความหรือ reply_token
                     if not reply_token:
                         app.logger.error("Missing 'replyToken' in event")
                         continue
