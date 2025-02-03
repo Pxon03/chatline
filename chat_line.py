@@ -5,16 +5,23 @@ import requests as requests_lib
 import os
 import openai
 import json
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from dotenv import load_dotenv  # นำเข้า dotenv เพื่อโหลดไฟล์ .env
+
+# โหลดตัวแปรจากไฟล์ .env (ถ้ามี)
+load_dotenv()
 
 # ดึงค่า API Key และ Line Access Token จาก Environment Variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
-ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")
+ADMIN_USER_ID = os.getenv("bplpoon")  # LINE User ID ของผู้จัดการ
+GOOGLE_SHEETS_CREDENTIALS = os.getenv("credentials/meta-vista-446710-b6-d2f76e23ec67.json.")  # ใส่ Path ไฟล์ JSON Credentials
 
-# ตรวจสอบค่า ENV Variables
-if not all([OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID]):
-    raise ValueError("Missing API keys. Please set required environment variables.")
+# ตรวจสอบค่าที่ต้องใช้
+if not all([OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID, GOOGLE_SHEETS_CREDENTIALS]):
+    raise ValueError("Missing required environment variables!")
 
 # ตั้งค่า OpenAI และ LINE Bot API
 openai.api_key = OPENAI_API_KEY
@@ -23,82 +30,100 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 app = Flask(__name__)
 
-conversation_history = {}
-GOOGLE_FORM_URL = "https://forms.gle/bVhHWbuNLPYrqqjG7"
+# ตั้งค่า Google Sheets API
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+# แก้ไขตรงนี้ให้ตรงกับ path ของไฟล์ JSON ที่ถูกต้อง
+credentials = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_CREDENTIALS, scope)
+gc = gspread.authorize(credentials)
+
+# เชื่อมต่อ Google Sheets (มี 2 อัน)
+SHEET_1_ID = "1C7gh_EuNcSnYLDXB1Z681fLCf9f9kX6a0YN6otoElkg"  # ใส่ Google Sheet ID อันแรก
+SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"  # ใส่ Google Sheet ID แบบประเมินการฆ่าตัวตาย (8Q)
+
+SHEET_1 = gc.open_by_key(SHEET_1_ID).worksheet("แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม (9Q)")  # เปลี่ยนชื่อชีตถ้าจำเป็น
+SHEET_2 = gc.open_by_key(SHEET_2_ID).worksheet("แบบประเมินการฆ่าตัวตาย (8Q)")
+
+# Google Forms
+GOOGLE_FORM_1 = "https://forms.gle/va6VXDSw9fTayVDD6"  # แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม
+GOOGLE_FORM_2 = "https://forms.gle/irMiKifUYYKYywku5"  # แบบประเมินการฆ่าตัวตาย (8Q)
+
+# ลิงก์วิดีโอที่เหมาะสมตามระดับคะแนน
+video_links = {
+    "low": "https://youtu.be/zr3quEuGSAE?si=U_jj_2lrITdbuef4",  # ปกติ
+    "medium": "https://youtu.be/TYSrIpdd2n4?si=stRQ-szINeeo6rdj",  # มีภาวะเครียด
+    "high": "https://youtu.be/wVCtz5nwB0I?si=2dxTcWtcJOHbkq2H"  # ซึมเศร้ารุนแรง
+}
+
+# ฟังก์ชันดึงคะแนนจาก Google Sheets (รองรับ 2 อัน)
+def get_user_score(user_id):
+    try:
+        for sheet in [SHEET_1, SHEET_2]:
+            records = sheet.get_all_records()
+            for row in records:
+                if row["user_id"] == user_id:
+                    return int(row["score"])
+    except Exception as e:
+        app.logger.error(f"Error fetching score from Google Sheets: {e}")
+    return None
+
+# ฟังก์ชันเลือกวิดีโอที่เหมาะสม
+def get_relaxing_video(score):
+    if score <= 9:
+        return video_links["low"]
+    elif score <= 19:
+        return video_links["medium"]
+    else:
+        return video_links["high"]
 
 # ฟังก์ชันส่งข้อความตอบกลับ
 def ReplyMessage(reply_token, text_message):
-    if not reply_token:
-        app.logger.error("Missing replyToken")
-        return
-    
-    LINE_API = 'https://api.line.me/v2/bot/message/reply'
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'
-    }
-    data = json.dumps({"replyToken": reply_token, "messages": [{"type": "text", "text": text_message}]})
-    
     try:
-        response = requests_lib.post(LINE_API, headers=headers, data=data)
-        response.raise_for_status()
-    except requests_lib.exceptions.RequestException as e:
-        app.logger.error(f"Error sending reply: {e}")
-        return
-
-# ฟังก์ชัน OpenAI
-def get_openai_response(user_id, user_message):
-    history = conversation_history.get(user_id, [])
-    history.append({"role": "user", "content": user_message})
-    
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "system", "content": "You are a helpful assistant, respond in Thai."}] + history,
-            max_tokens=200,
-            temperature=0.7
-        )
-        bot_reply = response["choices"][0]["message"]["content"]
-        history.append({"role": "assistant", "content": bot_reply})
-        conversation_history[user_id] = history[-10:]
-        return bot_reply
+        line_bot_api.reply_message(reply_token, TextSendMessage(text=text_message))
     except Exception as e:
-        app.logger.error(f"OpenAI error: {e}")
-        return "เกิดข้อผิดพลาด กรุณาลองใหม่"
+        app.logger.error(f"Error sending reply to LINE API: {e}")
+        return jsonify({"error": "Failed to send reply message"}), 500
+    return 200
+
+# ฟังก์ชันแจ้งเตือนผู้จัดการเมื่อพบความเสี่ยงสูง
+def send_risk_alert(user_name, risk_level):
+    message = f"แจ้งเตือน: ผู้ใช้งาน {user_name} มีความเสี่ยงระดับ {risk_level} กรุณาตรวจสอบข้อมูลในระบบ!"
+    line_bot_api.push_message(ADMIN_USER_ID, TextSendMessage(text=message))
 
 # Webhook สำหรับ LINE Bot
 @app.route('/webhook', methods=['POST', 'GET']) 
 def webhook():
-    if request.method == "GET":
-        return "Webhook endpoint is active", 200  # ✅ ตอบกลับถ้าเป็น GET
+    if request.method == "POST":
+        try:
+            req = request.json
+            if 'events' in req:
+                for event in req['events']:
+                    if event['type'] == 'message' and event['message']['type'] == 'text':
+                        user_message = event['message']['text']
+                        reply_token = event['replyToken']
+                        user_id = event['source']['userId']
 
-    try:
-        req = request.json
-        if not req or 'events' not in req:
-            return jsonify({"error": "Invalid request"}), 400
-        
-        for event in req['events']:
-            if event.get('type') == 'message' and event['message'].get('type') == 'text':
-                reply_token = event.get('replyToken')
-                user_message = event['message']['text']
-                user_id = event['source'].get('userId')
+                        # ตรวจจับคะแนนจาก Google Sheets
+                        score = get_user_score(user_id)
+                        if score is not None:
+                            video_url = get_relaxing_video(score)
+                            ReplyMessage(reply_token, f"นี่คือวิดีโอที่เหมาะกับคุณ: {video_url}")
+                        elif "แบบสอบถาม 1" in user_message:
+                            ReplyMessage(reply_token, f"กรุณากรอกแบบสอบถามที่นี่: {GOOGLE_FORM_1}")
+                        elif "แบบสอบถาม 2" in user_message:
+                            ReplyMessage(reply_token, f"กรุณากรอกแบบสอบถามที่นี่: {GOOGLE_FORM_2}")
+                        else:
+                            response_message = get_openai_response(user_id, user_message)
+                            ReplyMessage(reply_token, response_message)
 
-                if not reply_token or not user_id:
-                    app.logger.error("Missing replyToken or userId")
-                    continue
+            return jsonify({"status": "success"}), 200
+        except Exception as e:
+            app.logger.error(f"Error processing POST request: {e}")
+            return jsonify({"error": str(e)}), 500
 
-                if "แบบสอบถาม" in user_message:
-                    ReplyMessage(reply_token, f"กรุณากรอกแบบสอบถามที่นี่: {GOOGLE_FORM_URL}")
-                else:
-                    response_message = get_openai_response(user_id, user_message)
-                    ReplyMessage(reply_token, response_message)
-
-        return jsonify({"status": "success"}), 200
-    except Exception as e:
-        app.logger.error(f"Webhook error: {e}")
-        return jsonify({"error": str(e)}), 500
-
+    elif request.method == "GET":
+        return "GET", 200
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 5000))  
     app.run(debug=True, host="0.0.0.0", port=port)
