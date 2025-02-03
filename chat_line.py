@@ -78,20 +78,21 @@ def webhook():
     if request.method == "POST":
         try:
             req = request.json
-            app.logger.info(f"Received request: {json.dumps(req, ensure_ascii=False)}")  # Log ทั้งหมดที่ได้รับ
+            app.logger.info(f"Received request: {json.dumps(req, ensure_ascii=False)}")  
 
             if 'events' in req:
                 for event in req['events']:
-                    event_type = event.get('type')  # ตรวจสอบประเภทของ event
+                    event_type = event.get('type')
+                    event_mode = event.get('mode')  # ตรวจสอบ mode
                     reply_token = event.get('replyToken')
                     message = event.get('message', {})
                     message_type = message.get('type')
                     user_message = message.get('text')
                     user_id = event.get('source', {}).get('userId')
 
-                    # ตรวจสอบประเภทของ event และข้าม event ที่ไม่มี replyToken
-                    if event_type not in ["message", "postback"]:
-                        app.logger.info(f"Skipping event type: {event_type}")
+                    # ข้าม event ถ้าเป็นโหมด standby
+                    if event_mode == "standby":
+                        app.logger.info("Skipping event in standby mode")
                         continue
 
                     if not reply_token:
