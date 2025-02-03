@@ -78,18 +78,31 @@ def webhook():
     if request.method == "POST":
         try:
             req = request.json
+            app.logger.info(f"Received request: {json.dumps(req, ensure_ascii=False)}")  # Log ทั้งหมดที่ได้รับ
+
             if 'events' in req:
                 for event in req['events']:
+                    event_type = event.get('type')  # ตรวจสอบประเภทของ event
                     reply_token = event.get('replyToken')
                     message = event.get('message', {})
                     message_type = message.get('type')
                     user_message = message.get('text')
                     user_id = event.get('source', {}).get('userId')
-                    
-                    if not reply_token or not user_message:
-                        app.logger.error("Missing 'replyToken' or 'text' in event")
+
+                    # ตรวจสอบประเภทของ event และข้าม event ที่ไม่มี replyToken
+                    if event_type not in ["message", "postback"]:
+                        app.logger.info(f"Skipping event type: {event_type}")
+                        continue
+
+                    if not reply_token:
+                        app.logger.error("Missing 'replyToken' in event")
                         continue
                     
+                    if not user_message:
+                        app.logger.info("Skipping event with no text message")
+                        continue
+                    
+                    # ตรวจสอบข้อความ
                     if "แบบสอบถาม" in user_message:
                         send_survey_link(reply_token)
                     else:
