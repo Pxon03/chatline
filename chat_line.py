@@ -26,9 +26,6 @@ app = Flask(__name__)
 # เก็บประวัติการสนทนา
 conversation_history = {}
 
-# ลิงก์ Google Form
-GOOGLE_FORM_URL = "https://forms.gle/bVhHWbuNLPYrqqjG7"
-
 # ฟังก์ชันส่งข้อความตอบกลับ
 def ReplyMessage(reply_token, text_message):
     LINE_API = 'https://api.line.me/v2/bot/message/reply'
@@ -68,17 +65,6 @@ def get_openai_response(user_id, user_message):
         app.logger.error(f"Error: {e}")
         return "เกิดข้อผิดพลาด กรุณาลองใหม่"
 
-# ฟังก์ชันส่งลิงก์ Google Form
-def send_survey_link(reply_token):
-    response_message = (
-        "กรุณากรอกแบบสอบถามที่นี่:\n\n"
-        "1. แบบประเมินโรคซึมเศร้า (9Q)\n"
-        "https://forms.gle/DcpjMHV5Fda9GwvN7\n\n"
-        "2. แบบประเมินการฆ่าตัวตาย (8Q)\n"
-        "https://forms.gle/aG7TChRr4R9FtTMTA"
-    )
-    ReplyMessage(reply_token, response_message)
-
 # Webhook สำหรับ LINE Bot
 @app.route('/webhook', methods=['POST', 'GET']) 
 def webhook():
@@ -111,12 +97,9 @@ def webhook():
                         app.logger.info("Skipping event with no text message")
                         continue
                     
-                    # ตรวจสอบข้อความที่มีคำว่า "แบบสอบถาม", "แบบทดสอบ", หรือ "แบบประเมิน"
-                    if any(keyword in user_message for keyword in ["แบบสอบถาม", "แบบทดสอบ", "แบบประเมิน"]):
-                        send_survey_link(reply_token)
-                    else:
-                        response_message = get_openai_response(user_id, user_message)
-                        ReplyMessage(reply_token, response_message)
+                    # ส่งข้อความจาก OpenAI หรือตอบกลับตามคำถาม
+                    response_message = get_openai_response(user_id, user_message)
+                    ReplyMessage(reply_token, response_message)
             
             return jsonify({"status": "success"}), 200
         except Exception as e:
