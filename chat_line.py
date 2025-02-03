@@ -96,12 +96,12 @@ def webhook():
                     if not user_message:
                         app.logger.info("Skipping event with no text message")
                         continue
-
-                    # ตรวจสอบว่าข้อความนี้เคยได้รับการตอบกลับจาก LINE Bot แล้ว
-                    if "reply" in message and message["reply"] == "true":
+                    
+                    # ถ้าเป็นข้อความที่ LINE Bot ตอบไปแล้ว ไม่ให้ GPT ตอบ
+                    if "text" in message and message["text"] and reply_token:
                         app.logger.info("Message already replied by LINE bot. Skipping OpenAI response.")
                         continue
-                    
+
                     # ส่งข้อความจาก OpenAI หรือตอบกลับตามคำถาม
                     response_message = get_openai_response(user_id, user_message)
                     ReplyMessage(reply_token, response_message)
