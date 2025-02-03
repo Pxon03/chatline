@@ -92,7 +92,7 @@ def webhook():
 
                     # ตรวจสอบว่าเหตุการณ์อยู่ในโหมด standby หรือไม่
                     if event_mode == "standby":
-                        app.logger.info("Skipping event in standby mode")
+                        app.logger.info("Skipping event in standby mode. No new user message.")
                         continue
 
                     # ข้าม event ถ้าไม่มีข้อความหรือ reply_token
