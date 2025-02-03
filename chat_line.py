@@ -51,7 +51,7 @@ def get_openai_response(user_id, user_message):
     
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
+            model="gpt-4",
             messages=[{"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}] + history,
             max_tokens=200,
             temperature=0.7,
@@ -97,15 +97,15 @@ def webhook():
                         app.logger.info("Skipping event with no text message")
                         continue
                     
-                    # ถ้าเป็นข้อความที่ LINE Bot ตอบไปแล้ว ไม่ให้ GPT ตอบ
-                    if "text" in message and message["text"] and reply_token:
-                        app.logger.info("Message already replied by LINE bot. Skipping OpenAI response.")
-                        continue
+                    # ตรวจสอบว่า LINE Bot ตอบหรือยัง
+                    if user_message.lower() in ["แบบสอบถาม", "แบบทดสอบ", "แบบประเมิน"]:
+                        response_message = "กรุณากรอกแบบสอบถามที่นี่\n1.แบบประเมินโรคซึมเศร้า (9Q)\nhttps://forms.gle/DcpjMHV5Fda9GwvN7\n\n2.แบบประเมินการฆ่าตัวตาย (8Q)\nhttps://forms.gle/aG7TChRr4R9FtTMTA"
+                        ReplyMessage(reply_token, response_message)
+                    else:
+                        # หาก LINE Bot ยังไม่ได้ตอบ ก็ให้ GPT ตอบ
+                        response_message = get_openai_response(user_id, user_message)
+                        ReplyMessage(reply_token, response_message)
 
-                    # ส่งข้อความจาก OpenAI หรือตอบกลับตามคำถาม
-                    response_message = get_openai_response(user_id, user_message)
-                    ReplyMessage(reply_token, response_message)
-            
             return jsonify({"status": "success"}), 200
         except Exception as e:
             app.logger.error(f"Error processing POST request: {e}")
