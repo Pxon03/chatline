@@ -70,7 +70,14 @@ def get_openai_response(user_id, user_message):
 
 # ฟังก์ชันส่งลิงก์ Google Form
 def send_survey_link(reply_token):
-    ReplyMessage(reply_token, f"กรุณากรอกแบบสอบถามที่นี่: {GOOGLE_FORM_URL}")
+    response_message = (
+        "กรุณากรอกแบบสอบถามที่นี่:\n\n"
+        "1. แบบประเมินโรคซึมเศร้า (9Q)\n"
+        "https://forms.gle/DcpjMHV5Fda9GwvN7\n\n"
+        "2. แบบประเมินการฆ่าตัวตาย (8Q)\n"
+        "https://forms.gle/aG7TChRr4R9FtTMTA"
+    )
+    ReplyMessage(reply_token, response_message)
 
 # Webhook สำหรับ LINE Bot
 @app.route('/webhook', methods=['POST', 'GET']) 
@@ -104,8 +111,8 @@ def webhook():
                         app.logger.info("Skipping event with no text message")
                         continue
                     
-                    # ตรวจสอบข้อความ
-                    if "แบบสอบถาม" in user_message:
+                    # ตรวจสอบข้อความที่มีคำว่า "แบบสอบถาม", "แบบทดสอบ", หรือ "แบบประเมิน"
+                    if any(keyword in user_message for keyword in ["แบบสอบถาม", "แบบทดสอบ", "แบบประเมิน"]):
                         send_survey_link(reply_token)
                     else:
                         response_message = get_openai_response(user_id, user_message)
