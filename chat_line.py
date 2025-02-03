@@ -65,6 +65,26 @@ def get_openai_response(user_id, user_message):
         app.logger.error(f"Error: {e}")
         return "เกิดข้อผิดพลาด กรุณาลองใหม่"
 
+# ฟังก์ชันบันทึกข้อมูลการพูดคุยลง Google Sheets
+def log_to_google_sheet(user_id, user_message):
+    # Webhook URL ของ Google Apps Script
+    google_script_url = 'https://script.google.com/macros/s/AKfycbzRW7Ca_vRHLk_oK0ZlTNtGYllRwQ67Y887UC9Kn9tiu0ffe5orohsDVr0Q-5HC-Z_e/exec'  # ใส่ URL ของ Apps Script ที่คุณใช้
+    
+    # ข้อมูลที่ต้องการส่งไป
+    data = {
+        'user_id': user_id,
+        'message': user_message
+    }
+
+    try:
+        response = requests.post(google_script_url, data=data)
+        if response.status_code == 200:
+            print("Data logged successfully")
+        else:
+            print("Failed to log data")
+    except Exception as e:
+        print(f"Error logging data to Google Sheet: {e}")
+
 # Webhook สำหรับ LINE Bot
 @app.route('/webhook', methods=['POST', 'GET']) 
 def webhook():
@@ -105,6 +125,9 @@ def webhook():
                         # หาก LINE Bot ยังไม่ได้ตอบ ก็ให้ GPT ตอบ
                         response_message = get_openai_response(user_id, user_message)
                         ReplyMessage(reply_token, response_message)
+                    
+                    # บันทึกข้อมูลการพูดคุยลง Google Sheets
+                    log_to_google_sheet(user_id, user_message)
 
             return jsonify({"status": "success"}), 200
         except Exception as e:
