@@ -1,8 +1,6 @@
 from flask import Flask, request, jsonify
-from linebot.v3.messaging import MessagingApi
-from linebot.v3.webhooks import WebhookHandler
-from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.webhooks.models import MessageEvent, TextMessageContent
+from linebot import LineBotApi, WebhookHandler
+from linebot.models import TextSendMessage
 import os
 import openai
 import json
@@ -15,13 +13,13 @@ LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")
 GOOGLE_SCRIPT_URL = os.getenv("GOOGLE_SCRIPT_URL")  # URL ของ Google Apps Script
 
-# ตรวจสอบว่ามีการตั้งค่า ENV Variable หรือไม่
-if not all([OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID, GOOGLE_SCRIPT_URL]):
-    raise ValueError("Missing API keys. Please set required environment variables.")
+# ตรวจสอบว่าได้ตั้งค่า ENV Variables ครบหรือยัง
+if not all([OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID]):
+    raise ValueError("Missing API keys. Please set all required environment variables.")
 
 # ตั้งค่า OpenAI และ LINE Bot API
 openai.api_key = OPENAI_API_KEY
-line_bot_api = MessagingApi(LINE_ACCESS_TOKEN)
+line_bot_api = LineBotApi(LINE_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 app = Flask(__name__)
@@ -30,7 +28,7 @@ app = Flask(__name__)
 conversation_history = {}
 
 # ฟังก์ชันส่งข้อความตอบกลับ
-def reply_message(reply_token, text_message):
+def ReplyMessage(reply_token, text_message):
     LINE_API = 'https://api.line.me/v2/bot/message/reply'
     headers = {
         'Content-Type': 'application/json',
@@ -45,6 +43,20 @@ def reply_message(reply_token, text_message):
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         app.logger.error(f"Error sending reply to LINE API: {e}")
+
+# ฟังก์ชันบันทึกข้อความลง Google Sheets ผ่าน Apps Script
+def save_to_google_sheets(user_id, message):
+    if not GOOGLE_SCRIPT_URL:
+        app.logger.warning("GOOGLE_SCRIPT_URL is not set! Skipping Google Sheets logging.")
+        return
+    
+    data = {"user_id": user_id, "message": message}
+    try:
+        response = requests.post(GOOGLE_SCRIPT_URL, json=data)
+        response.raise_for_status()
+        app.logger.info("Message saved to Google Sheets successfully.")
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Error sending data to Google Sheets: {e}")
 
 # ฟังก์ชัน OpenAI สำหรับประมวลผลข้อความ
 def get_openai_response(user_id, user_message):
@@ -65,18 +77,8 @@ def get_openai_response(user_id, user_message):
         conversation_history[user_id] = history[-10:]  # เก็บประวัติแค่ 10 ข้อความล่าสุด
         return bot_reply
     except Exception as e:
-        app.logger.error(f"Error: {e}")
+        app.logger.error(f"Error from OpenAI API: {e}")
         return "เกิดข้อผิดพลาด กรุณาลองใหม่"
-
-# ฟังก์ชันส่งข้อมูลไปยัง Google Sheets
-def save_to_google_sheets(user_id, display_name):
-    try:
-        data = {"userId": user_id, "displayName": display_name}
-        response = requests.post(GOOGLE_SCRIPT_URL, json=data)
-        response.raise_for_status()
-        app.logger.info("Successfully sent data to Google Sheets")
-    except requests.exceptions.RequestException as e:
-        app.logger.error(f"Error sending data to Google Sheets: {e}")
 
 # Webhook สำหรับ LINE Bot
 @app.route('/webhook', methods=['POST', 'GET']) 
@@ -89,40 +91,29 @@ def webhook():
             if 'events' in req:
                 for event in req['events']:
                     event_type = event.get('type')
-                    event_mode = event.get('mode')  
+                    event_mode = event.get('mode')  # ตรวจสอบ mode
                     reply_token = event.get('replyToken')
                     message = event.get('message', {})
                     message_type = message.get('type')
                     user_message = message.get('text')
                     user_id = event.get('source', {}).get('userId')
 
+                    # ตรวจสอบว่าเหตุการณ์อยู่ในโหมด standby หรือไม่
                     if event_mode == "standby":
-                        app.logger.info("Skipping event in standby mode.")
+                        app.logger.info("Skipping event in standby mode. No new user message.")
                         continue
 
-                    if not reply_token:
-                        app.logger.error("Missing 'replyToken' in event")
+                    # ข้าม event ถ้าไม่มีข้อความหรือ reply_token
+                    if not reply_token or not user_message:
+                        app.logger.info("Skipping event with no reply_token or text message")
                         continue
-                    
-                    if not user_message:
-                        app.logger.info("Skipping event with no text message")
-                        continue
-                    
-                    # ดึงชื่อจาก LINE Profile API
-                    headers = {"Authorization": f"Bearer {LINE_ACCESS_TOKEN}"}
-                    profile_url = f"https://api.line.me/v2/bot/profile/{user_id}"
-                    response = requests.get(profile_url, headers=headers)
-                    
-                    if response.status_code == 200:
-                        profile_data = response.json()
-                        display_name = profile_data.get("displayName", "Unknown")
-                        save_to_google_sheets(user_id, display_name)
-                    else:
-                        app.logger.error(f"Failed to fetch profile for userId: {user_id}")
+
+                    # บันทึกข้อความลง Google Sheets
+                    save_to_google_sheets(user_id, user_message)
 
                     # ส่งข้อความจาก OpenAI
                     response_message = get_openai_response(user_id, user_message)
-                    reply_message(reply_token, response_message)
+                    ReplyMessage(reply_token, response_message)
             
             return jsonify({"status": "success"}), 200
         except Exception as e:
