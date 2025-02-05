@@ -5,6 +5,7 @@ import os
 import openai
 import json
 import requests
+from datetime import datetime
 
 # ดึงค่า API Key และ Line Access Token จาก Environment Variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -45,18 +46,33 @@ def ReplyMessage(reply_token, text_message):
         app.logger.error(f"Error sending reply to LINE API: {e}")
 
 # ฟังก์ชันบันทึกข้อความลง Google Sheets ผ่าน Apps Script
-def save_to_google_sheets(user_id, message):
+def save_to_google_sheets(user_id, user_message):
     if not GOOGLE_SCRIPT_URL:
         app.logger.warning("GOOGLE_SCRIPT_URL is not set! Skipping Google Sheets logging.")
         return
-    
-    data = {"user_id": user_id, "message": message}
+
     try:
+        # ดึงชื่อผู้ใช้จาก LINE API
+        profile = line_bot_api.get_profile(user_id)
+        user_name = profile.display_name  # หรือสามารถใช้ข้อมูลอื่นๆ ที่ต้องการ
+
+        # ใช้เวลาปัจจุบันเป็น Timestamp ในรูปแบบที่ต้องการ
+        current_time = datetime.now().strftime("%d/%m/%y %H:%M")  # รูปแบบ 05/02/68 20:00
+
+        # ส่งข้อมูลไป Google Sheets (Time, User ID, Name)
+        data = {
+            "time": current_time,
+            "user_id": user_id,
+            "name": user_name,
+            "message": user_message
+        }
         response = requests.post(GOOGLE_SCRIPT_URL, json=data)
         response.raise_for_status()
         app.logger.info("Message saved to Google Sheets successfully.")
     except requests.exceptions.RequestException as e:
         app.logger.error(f"Error sending data to Google Sheets: {e}")
+    except Exception as e:
+        app.logger.error(f"Error getting user profile or saving to Google Sheets: {e}")
 
 # ฟังก์ชัน OpenAI สำหรับประมวลผลข้อความ
 def get_openai_response(user_id, user_message):
@@ -115,9 +131,6 @@ def webhook():
                     response_message = get_openai_response(user_id, user_message)
                     ReplyMessage(reply_token, response_message)
 
-                    # ส่งข้อมูลไปยัง Make.com
-                    send_to_make(user_id, user_message, response_message)
-            
             return jsonify({"status": "success"}), 200
         except Exception as e:
             app.logger.error(f"Error processing POST request: {e}")
