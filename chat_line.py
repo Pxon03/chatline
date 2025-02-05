@@ -12,6 +12,7 @@ LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")
 GOOGLE_SCRIPT_URL = os.getenv("GOOGLE_SCRIPT_URL")  # URL ของ Google Apps Script
+MAKE_WEBHOOK_URL = os.getenv("MAKE_WEBHOOK_URL")  # URL ของ Make.com Webhook
 
 # ตรวจสอบว่าได้ตั้งค่า ENV Variables ครบหรือยัง
 if not all([OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID]):
@@ -80,6 +81,24 @@ def get_openai_response(user_id, user_message):
         app.logger.error(f"Error from OpenAI API: {e}")
         return "เกิดข้อผิดพลาด กรุณาลองใหม่"
 
+# ฟังก์ชันส่งข้อมูลไปยัง Make.com (ถ้าต้องการ)
+def send_to_make(user_id, user_message, response_message):
+    if not MAKE_WEBHOOK_URL:
+        app.logger.warning("MAKE_WEBHOOK_URL is not set! Skipping sending to Make.com.")
+        return
+    
+    data = {
+        "user_id": user_id,
+        "user_message": user_message,
+        "response_message": response_message
+    }
+    try:
+        response = requests.post(MAKE_WEBHOOK_URL, json=data)
+        response.raise_for_status()
+        app.logger.info("Data sent to Make.com successfully.")
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Error sending data to Make.com: {e}")
+
 # Webhook สำหรับ LINE Bot
 @app.route('/webhook', methods=['POST', 'GET']) 
 def webhook():
@@ -114,6 +133,9 @@ def webhook():
                     # ส่งข้อความจาก OpenAI
                     response_message = get_openai_response(user_id, user_message)
                     ReplyMessage(reply_token, response_message)
+
+                    # ส่งข้อมูลไปยัง Make.com
+                    send_to_make(user_id, user_message, response_message)
             
             return jsonify({"status": "success"}), 200
         except Exception as e:
