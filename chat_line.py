@@ -8,7 +8,7 @@ import requests
 from datetime import datetime
 
 # ดึงค่า API Key และ Line Access Token จาก Environment Variables
-#OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")
@@ -75,26 +75,26 @@ def save_to_google_sheets(user_id, user_message):
         app.logger.error(f"Error getting user profile or saving to Google Sheets: {e}")
 
 # ฟังก์ชัน OpenAI สำหรับประมวลผลข้อความ
-def get_openai_response(user_id, user_message):
-    global conversation_history
-    history = conversation_history.get(user_id, [])
-    history.append({"role": "user", "content": user_message})
+# def get_openai_response(user_id, user_message):
+#     global conversation_history
+#     history = conversation_history.get(user_id, [])
+#     history.append({"role": "user", "content": user_message})
     
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}] + history,
-            max_tokens=200,
-            temperature=0.7,
-            stop=["\n\n"]
-        )
-        bot_reply = response["choices"][0]["message"]["content"]
-        history.append({"role": "assistant", "content": bot_reply})
-        conversation_history[user_id] = history[-10:]  # เก็บประวัติแค่ 10 ข้อความล่าสุด
-        return bot_reply
-    except Exception as e:
-        app.logger.error(f"Error from OpenAI API: {e}")
-        return "เกิดข้อผิดพลาด กรุณาลองใหม่"
+#     try:
+#         response = openai.ChatCompletion.create(
+#             model="gpt-4o-mini",
+#             messages=[{"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}] + history,
+#             max_tokens=200,
+#             temperature=0.7,
+#             stop=["\n\n"]
+#         )
+#         bot_reply = response["choices"][0]["message"]["content"]
+#         history.append({"role": "assistant", "content": bot_reply})
+#         conversation_history[user_id] = history[-10:]  # เก็บประวัติแค่ 10 ข้อความล่าสุด
+#         return bot_reply
+#     except Exception as e:
+#         app.logger.error(f"Error from OpenAI API: {e}")
+#         return "เกิดข้อผิดพลาด กรุณาลองใหม่"
 
 # Webhook สำหรับ LINE Bot
 @app.route('/webhook', methods=['POST', 'GET']) 
