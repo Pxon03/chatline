@@ -8,7 +8,7 @@ import requests
 from datetime import datetime
 
 # ดึงค่า API Key และ Line Access Token จาก Environment Variables
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+#OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")
