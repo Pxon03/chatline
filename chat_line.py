@@ -1,32 +1,141 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # นำเข้า CORS
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import TextSendMessage
+import requests as requests_lib
 import os
 import openai
 import json
-import requests
-from datetime import datetime
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from dotenv import load_dotenv  # นำเข้า dotenv เพื่อโหลดไฟล์ .env
+
+# โหลดตัวแปรจากไฟล์ .env (ถ้ามี)
+load_dotenv()
+
+# ตรวจสอบว่าไฟล์ .env มีอยู่ในไดเรกทอรีปัจจุบันหรือไม่
+env_path = os.path.join(os.getcwd(), '.env')
+print(f"Looking for .env file at: {env_path}")
+if not os.path.exists(env_path):
+    raise FileNotFoundError(f".env file not found at: {env_path}")
 
 # ดึงค่า API Key และ Line Access Token จาก Environment Variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
-ADMIN_USER_ID = os.getenv("LINE_ADMIN_USER_ID")
-GOOGLE_SCRIPT_URL = os.getenv("GOOGLE_SCRIPT_URL")  # URL ของ Google Apps Script
+ADMIN_USER_ID = os.getenv("ADMIN_USER_ID")  # LINE User ID ของผู้จัดการ
+GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")  # ใส่ Path ไฟล์ JSON Credentials
+# พิมพ์ค่าตัวแปรเพื่อตรวจสอบ
+print(f"OPENAI_API_KEY: {OPENAI_API_KEY}")
+print(f"LINE_ACCESS_TOKEN: {LINE_ACCESS_TOKEN}")
+print(f"LINE_CHANNEL_SECRET: {LINE_CHANNEL_SECRET}")
+print(f"ADMIN_USER_ID: {ADMIN_USER_ID}")
+print(f"GOOGLE_SHEETS_CREDENTIALS: {GOOGLE_SHEETS_CREDENTIALS}")
 
-# ตรวจสอบว่าได้ตั้งค่า ENV Variables ครบหรือยัง
-if not all([OPENAI_API_KEY, LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, ADMIN_USER_ID]):
-    raise ValueError("Missing API keys. Please set all required environment variables.")
+# ตรวจสอบค่าที่ต้องใช้
+missing_vars = []
+if not OPENAI_API_KEY:
+    missing_vars.append("OPENAI_API_KEY")
+if not LINE_ACCESS_TOKEN:
+    missing_vars.append("LINE_ACCESS_TOKEN")
+if not LINE_CHANNEL_SECRET:
+    missing_vars.append("LINE_CHANNEL_SECRET")
+if not ADMIN_USER_ID:
+    missing_vars.append("ADMIN_USER_ID")
+if not GOOGLE_SHEETS_CREDENTIALS:
+    missing_vars.append("GOOGLE_SHEETS_CREDENTIALS")
 
-# ตั้งค่า OpenAI และ LINE Bot API
-openai.api_key = OPENAI_API_KEY
+if missing_vars:
+    raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+
+# ตรวจสอบว่าไฟล์ JSON Credentials มีอยู่จริง
+if not os.path.isfile(GOOGLE_SHEETS_CREDENTIALS):
+    raise FileNotFoundError(f"Google Sheets credentials file not found: {GOOGLE_SHEETS_CREDENTIALS}")
+
+# กำหนดค่า LineBotApi และ WebhookHandler
 line_bot_api = LineBotApi(LINE_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
+# สร้างแอปพลิเคชัน Flask
 app = Flask(__name__)
+CORS(app)  # กำหนดค่า CORS
 
-# เก็บประวัติการสนทนา
-conversation_history = {}
+# ตั้งค่า Google Sheets API
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+credentials = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_CREDENTIALS, scope)
+gc = gspread.authorize(credentials)
+
+# เชื่อมต่อ Google Sheets (มี 2 อัน)
+SHEET_1_ID = "1C7gh_EuNcSnYLDXB1Z681fLCf9f9kX6a0YN6otoElkg"  # ใส่ Google Sheet ID อันแรก
+SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"  # ใส่ Google Sheet ID แบบประเมินการฆ่าตัวตาย (8Q)
+
+# เปิด Google Sheets โดยใช้ key
+gc = gspread.service_account(filename='meta-vista-446710-b6-10ea99c15a4b.json')
+spreadsheet_1 = gc.open_by_key(SHEET_1_ID)
+spreadsheet_2 = gc.open_by_key(SHEET_2_ID)
+
+# พิมพ์ชื่อของทุก worksheet ใน Google Sheets
+worksheets_1 = spreadsheet_1.worksheets()
+worksheets_2 = spreadsheet_2.worksheets()
+
+print("Worksheets in Spreadsheet 1:")
+for worksheet in worksheets_1:
+    print(worksheet.title)
+
+print("Worksheets in Spreadsheet 2:")
+for worksheet in worksheets_2:
+    print(worksheet.title)
+
+worksheet_title = 'การตอบแบบฟอร์ม 1'
+
+# ตรวจสอบว่า worksheet ที่ต้องการมีอยู่หรือไม่
+try:
+    worksheet = next(ws for ws in spreadsheet_1.worksheets() if ws.title == worksheet_title)
+    print(f"Worksheet '{worksheet_title}' found in Spreadsheet 1")
+except StopIteration:
+    print(f"Worksheet '{worksheet_title}' not found in Spreadsheet 1")
+
+try:
+    worksheet = next(ws for ws in spreadsheet_2.worksheets() if ws.title == worksheet_title)
+    print(f"Worksheet '{worksheet_title}' found in Spreadsheet 2")
+except StopIteration:
+    print(f"Worksheet '{worksheet_title}' not found in Spreadsheet 2")
+
+# เปิด worksheet ที่ต้องการ
+worksheet_1 = next(ws for ws in spreadsheet_1.worksheets() if ws.title == worksheet_title)  # เปลี่ยนชื่อชีตถ้าจำเป็น
+worksheet_2 = next(ws for ws in spreadsheet_2.worksheets() if ws.title == worksheet_title)  # เปลี่ยนชื่อชีตถ้าจำเป็น
+
+# อ่านข้อมูลจาก worksheet
+data_1 = worksheet_1.get_all_values()
+data_2 = worksheet_2.get_all_values()
+
+# พิมพ์ข้อมูลที่อ่านได้
+print("Data from Worksheet 1:")
+for row in data_1:
+    print(row)
+
+print("Data from Worksheet 2:")
+for row in data_2:
+    print(row)
+
+# เปิด worksheet ที่ต้องการ
+SHEET_1 = next(ws for ws in gc.open_by_key(SHEET_1_ID).worksheets() if ws.title == "การตอบแบบฟอร์ม 1")  # เปลี่ยนชื่อชีตถ้าจำเป็น
+SHEET_2 = next(ws for ws in gc.open_by_key(SHEET_2_ID).worksheets() if ws.title == "การตอบแบบฟอร์ม 1")  # เปลี่ยนชื่อชีตถ้าจำเป็น
+
+# Google Forms
+GOOGLE_FORM_1 = "https://forms.gle/va6VXDSw9fTayVDD6"  # แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม
+GOOGLE_FORM_2 = "https://forms.gle/irMiKifUYYKYywku5"  # แบบประเมินการฆ่าตัวตาย (8Q)
+# ลิงก์วิดีโอที่เหมาะสมตามระดับคะแนน
+video_links = {
+    "low": "https://youtu.be/zr3quEuGSAE?si=U_jj_2lrITdbuef4",  # ปกติ
+    "medium": "https://youtu.be/TYSrIpdd2n4?si=stRQ-szINeeo6rdj",  # มีภาวะเครียด
+    "high": "https://youtu.be/wVCtz5nwB0I?si=2dxTcWtcJOHbkq2H"  # ซึมเศร้ารุนแรง
+}
+
+# ฟังก์ชันดึงคะแนนจาก Google Sheets (รองรับ 2 อัน)
+def get_user_score(user_id):
+    # Implement your function here
+    pass
 
 # ฟังก์ชันส่งข้อความตอบกลับ
 def ReplyMessage(reply_token, text_message):
@@ -40,61 +149,52 @@ def ReplyMessage(reply_token, text_message):
         "messages": [{"type": "text", "text": text_message}]
     }
     try:
-        response = requests.post(LINE_API, headers=headers, json=data)
+        response = requests_lib.post(LINE_API, headers=headers, json=data)
         response.raise_for_status()
-    except requests.exceptions.RequestException as e:
+    except requests_lib.exceptions.RequestException as e:
         app.logger.error(f"Error sending reply to LINE API: {e}")
 
-# ฟังก์ชันบันทึกข้อความลง Google Sheets ผ่าน Apps Script
-def save_to_google_sheets(user_id, user_message):
-    if not GOOGLE_SCRIPT_URL:
-        app.logger.warning("GOOGLE_SCRIPT_URL is not set! Skipping Google Sheets logging.")
-        return
+# ฟังก์ชัน OpenAI สำหรับประมวลผลข้อความ
+def get_openai_response(user_id, user_message):
+    global conversation_history
+    history = conversation_history.get(user_id, [])
+    history.append({"role": "user", "content": user_message})
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}] + history,
+            max_tokens=200,
+            temperature=0.7,
+            stop=["\n\n"]
+        )
+        bot_reply = response["choices"][0]["message"]["content"]
+        history.append({"role": "assistant", "content": bot_reply})
+        conversation_history[user_id] = history[-10:]  # เก็บประวัติแค่ 10 ข้อความล่าสุด
+        return bot_reply
+    except Exception as e:
+        app.logger.error(f"Error: {e}")
+        return "เกิดข้อผิดพลาด กรุณาลองใหม่"
+
+# ฟังก์ชันบันทึกข้อมูลการพูดคุยลง Google Sheets
+def log_to_google_sheet(user_id, user_message):
+    # Webhook URL ของ Google Apps Script
+    google_script_url = 'https://script.google.com/macros/s/AKfycbzRW7Ca_vRHLk_oK0ZlTNtGYllRwQ67Y887UC9Kn9tiu0ffe5orohsDVr0Q-5HC-Z_e/exec'  # ใส่ URL ของ Apps Script ที่คุณใช้
+    
+    # ข้อมูลที่ต้องการส่งไป
+    data = {
+        'user_id': user_id,
+        'message': user_message
+    }
 
     try:
-        # ดึงชื่อผู้ใช้จาก LINE API
-        profile = line_bot_api.get_profile(user_id)
-        user_name = profile.display_name  # หรือสามารถใช้ข้อมูลอื่นๆ ที่ต้องการ
-
-        # ใช้เวลาปัจจุบันเป็น Timestamp ในรูปแบบที่ต้องการ
-        current_time = datetime.now().strftime("%d/%m/%y %H:%M")  # รูปแบบ 05/02/68 20:00
-
-        # ส่งข้อมูลไป Google Sheets (Time, User ID, Name)
-        data = {
-            "time": current_time,
-            "user_id": user_id,
-            "name": user_name,
-            "message": user_message
-        }
-        response = requests.post(GOOGLE_SCRIPT_URL, json=data)
-        response.raise_for_status()
-        app.logger.info("Message saved to Google Sheets successfully.")
-    except requests.exceptions.RequestException as e:
-        app.logger.error(f"Error sending data to Google Sheets: {e}")
+        response = requests_lib.post(google_script_url, data=data)
+        if response.status_code == 200:
+            print("Data logged successfully")
+        else:
+            print("Failed to log data")
     except Exception as e:
-        app.logger.error(f"Error getting user profile or saving to Google Sheets: {e}")
-
-# ฟังก์ชัน OpenAI สำหรับประมวลผลข้อความ
-# def get_openai_response(user_id, user_message):
-#     global conversation_history
-#     history = conversation_history.get(user_id, [])
-#     history.append({"role": "user", "content": user_message})
-    
-#     try:
-#         response = openai.ChatCompletion.create(
-#             model="gpt-4o-mini",
-#             messages=[{"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}] + history,
-#             max_tokens=200,
-#             temperature=0.7,
-#             stop=["\n\n"]
-#         )
-#         bot_reply = response["choices"][0]["message"]["content"]
-#         history.append({"role": "assistant", "content": bot_reply})
-#         conversation_history[user_id] = history[-10:]  # เก็บประวัติแค่ 10 ข้อความล่าสุด
-#         return bot_reply
-#     except Exception as e:
-#         app.logger.error(f"Error from OpenAI API: {e}")
-#         return "เกิดข้อผิดพลาด กรุณาลองใหม่"
+        print(f"Error logging data to Google Sheet: {e}")
 
 # Webhook สำหรับ LINE Bot
 @app.route('/webhook', methods=['POST', 'GET']) 
@@ -120,16 +220,25 @@ def webhook():
                         continue
 
                     # ข้าม event ถ้าไม่มีข้อความหรือ reply_token
-                    if not reply_token or not user_message:
-                        app.logger.info("Skipping event with no reply_token or text message")
+                    if not reply_token:
+                        app.logger.error("Missing 'replyToken' in event")
                         continue
-
-                    # บันทึกข้อความลง Google Sheets
-                    save_to_google_sheets(user_id, user_message)
-
-                    # ส่งข้อความจาก OpenAI
-                    response_message = get_openai_response(user_id, user_message)
-                    ReplyMessage(reply_token, response_message)
+                    
+                    if not user_message:
+                        app.logger.info("Skipping event with no text message")
+                        continue
+                    
+                    # ตรวจสอบว่า LINE Bot ตอบหรือยัง
+                    if user_message.lower() in ["แบบสอบถาม", "แบบทดสอบ", "แบบประเมิน"]:
+                        response_message = "กรุณากรอกแบบสอบถามที่นี่\n1.แบบประเมินโรคซึมเศร้า (9Q)\nhttps://forms.gle/DcpjMHV5Fda9GwvN7\n\n2.แบบประเมินการฆ่าตัวตาย (8Q)\nhttps://forms.gle/aG7TChRr4R9FtTMTA"
+                        ReplyMessage(reply_token, response_message)
+                    else:
+                        # หาก LINE Bot ยังไม่ได้ตอบ ก็ให้ GPT ตอบ
+                        response_message = get_openai_response(user_id, user_message)
+                        ReplyMessage(reply_token, response_message)
+                    
+                    # บันทึกข้อมูลการพูดคุยลง Google Sheets
+                    log_to_google_sheet(user_id, user_message)
 
             return jsonify({"status": "success"}), 200
         except Exception as e:
