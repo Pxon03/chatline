@@ -33,6 +33,8 @@ if not credentials_base64:
 credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
 credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
 
+creds_json = json.loads(os.environ.get("GOOGLE_SHEETS_CREDENTIALS", "{}"))
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
 # ถอดรหัสจาก Base64 เป็น JSON
 try:
     credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
