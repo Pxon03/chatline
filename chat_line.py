@@ -9,6 +9,8 @@ import json
 import gspread
 import base64 
 from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
+
 #from dotenv import load_dotenv  # นำเข้า dotenv เพื่อโหลดไฟล์ .env
 
 # โหลดตัวแปรจากไฟล์ .env (ถ้ามี)
