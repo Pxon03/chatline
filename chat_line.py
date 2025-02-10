@@ -7,6 +7,7 @@ import os
 import openai
 import json
 import gspread
+import base64 
 from oauth2client.service_account import ServiceAccountCredentials
 #from dotenv import load_dotenv  # นำเข้า dotenv เพื่อโหลดไฟล์ .env
 
