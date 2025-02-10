@@ -35,7 +35,7 @@ if GOOGLE_SHEETS_CREDENTIALS:
         with open("credentials.json", "w") as json_file:
             json.dump(credentials_dict, json_file)
     except:
-        
+        pass
 print(f"🔍 DEBUG - ADMIN_USER_ID: {os.getenv('ADMIN_USER_ID')}")
 print(f"🔍 DEBUG - GOOGLE_SHEETS_CREDENTIALS: {GOOGLE_SHEETS_CREDENTIALS}")
 
