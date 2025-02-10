@@ -25,6 +25,9 @@ LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 ADMIN_USER_ID = os.getenv("ADMIN_USER_ID")  # LINE User ID ของผู้จัดการ
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")  # ใส่ Path ไฟล์ JSON Credentials
+DATABASE_URL = os.getenv("DATABASE_URL")
+SECRET_KEY = os.getenv("SECRET_KEY")
+
 if GOOGLE_SHEETS_CREDENTIALS:
     try:
         # แปลง JSON String เป็นไฟล์ credentials.json
@@ -32,9 +35,7 @@ if GOOGLE_SHEETS_CREDENTIALS:
         with open("credentials.json", "w") as json_file:
             json.dump(credentials_dict, json_file)
     except:
-DATABASE_URL = os.getenv("DATABASE_URL")
-SECRET_KEY = os.getenv("SECRET_KEY")
-
+        
 print(f"🔍 DEBUG - ADMIN_USER_ID: {os.getenv('ADMIN_USER_ID')}")
 print(f"🔍 DEBUG - GOOGLE_SHEETS_CREDENTIALS: {GOOGLE_SHEETS_CREDENTIALS}")
 
