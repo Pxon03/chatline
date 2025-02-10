@@ -31,6 +31,7 @@ if GOOGLE_SHEETS_CREDENTIALS:
         credentials_dict = json.loads(GOOGLE_SHEETS_CREDENTIALS)
         with open("credentials.json", "w") as json_file:
             json.dump(credentials_dict, json_file)
+    except:
 DATABASE_URL = os.getenv("DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY")
 
