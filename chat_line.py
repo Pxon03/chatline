@@ -8,16 +8,16 @@ import openai
 import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from dotenv import load_dotenv  # นำเข้า dotenv เพื่อโหลดไฟล์ .env
+#from dotenv import load_dotenv  # นำเข้า dotenv เพื่อโหลดไฟล์ .env
 
 # โหลดตัวแปรจากไฟล์ .env (ถ้ามี)
-load_dotenv()
+#load_dotenv()
 
 # ตรวจสอบว่าไฟล์ .env มีอยู่ในไดเรกทอรีปัจจุบันหรือไม่
-env_path = os.path.join(os.getcwd(), '.env')
-print(f"Looking for .env file at: {env_path}")
-if not os.path.exists(env_path):
-    raise FileNotFoundError(f".env file not found at: {env_path}")
+#env_path = os.path.join(os.getcwd(), '.env')
+#print(f"Looking for .env file at: {env_path}")
+#if not os.path.exists(env_path):
+    #raise FileNotFoundError(f".env file not found at: {env_path}")
 
 # ดึงค่า API Key และ Line Access Token จาก Environment Variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
