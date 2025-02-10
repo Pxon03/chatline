@@ -33,6 +33,15 @@ if not credentials_base64:
 credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
 credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
 
+# ถอดรหัสจาก Base64 เป็น JSON
+try:
+    credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
+    creds_dict = json.loads(credentials_json)
+except Exception as e:
+    raise ValueError(f"❌ Google Sheets Credentials Error: {str(e)}")
+
+print("✅ Credentials loaded successfully!")
+
 # Load as dictionary
 creds_dict = json.loads(credentials_json)
 
