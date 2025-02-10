@@ -20,7 +20,15 @@ from oauth2client.service_account import ServiceAccountCredentials
 #if not os.path.exists(env_path):
     #raise FileNotFoundError(f".env file not found at: {env_path}")
 # Decode Base64 credentials
+
+# Decode Base64 credentials
 credentials_base64 = os.getenv("GOOGLE_SHEETS_CREDENTIALS_BASE64")
+
+# ✅ ตรวจสอบว่า Environment Variable มีค่าหรือไม่
+if not credentials_base64:
+    raise ValueError("❌ GOOGLE_SHEETS_CREDENTIALS_BASE64 is not set or is empty!")
+
+credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
 credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
 
 # Load as dictionary
