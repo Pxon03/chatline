@@ -18,6 +18,15 @@ from oauth2client.service_account import ServiceAccountCredentials
 #print(f"Looking for .env file at: {env_path}")
 #if not os.path.exists(env_path):
     #raise FileNotFoundError(f".env file not found at: {env_path}")
+# Decode Base64 credentials
+credentials_base64 = os.getenv("GOOGLE_SHEETS_CREDENTIALS_BASE64")
+credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
+
+# Load as dictionary
+creds_dict = json.loads(credentials_json)
+
+# Create Google Sheets credentials object
+creds = Credentials.from_service_account_info(creds_dict)
 
 # ดึงค่า API Key และ Line Access Token จาก Environment Variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
