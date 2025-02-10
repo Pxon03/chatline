@@ -25,6 +25,12 @@ LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 ADMIN_USER_ID = os.getenv("ADMIN_USER_ID")  # LINE User ID ของผู้จัดการ
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")  # ใส่ Path ไฟล์ JSON Credentials
+if GOOGLE_SHEETS_CREDENTIALS:
+    try:
+        # แปลง JSON String เป็นไฟล์ credentials.json
+        credentials_dict = json.loads(GOOGLE_SHEETS_CREDENTIALS)
+        with open("credentials.json", "w") as json_file:
+            json.dump(credentials_dict, json_file)
 DATABASE_URL = os.getenv("DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY")
 
@@ -39,6 +45,8 @@ print(f"ADMIN_USER_ID: {ADMIN_USER_ID}")
 print(f"GOOGLE_SHEETS_CREDENTIALS: {GOOGLE_SHEETS_CREDENTIALS}")
 print(f"DATABASE_URL: {DATABASE_URL}")
 print(f"SECRET_KEY: {SECRET_KEY}")
+
+
 
 # ตรวจสอบว่าอ่านค่าได้จริง
 if not DATABASE_URL:
