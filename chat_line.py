@@ -43,6 +43,23 @@ if not DATABASE_URL:
 
 if not SECRET_KEY:
     raise ValueError("❌ SECRET_KEY is not set in the environment variables!")
+# ทดสอบเชื่อมต่อ Database
+try:
+    import psycopg2
+    conn = psycopg2.connect(DATABASE_URL)
+    print("✅ Connected to Database Successfully!")
+    conn.close()
+except Exception as e:
+    print(f"❌ Database Connection Error: {e}")
+
+# ทดสอบ Google Sheets Credentials
+try:
+    import json
+    GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
+    credentials = json.loads(GOOGLE_SHEETS_CREDENTIALS)  # แปลง JSON
+    print("✅ Google Sheets Credentials Loaded!")
+except Exception as e:
+    print(f"❌ Google Sheets Credentials Error: {e}")
 
 # ตรวจสอบค่าที่ต้องใช้
 missing_vars = []
