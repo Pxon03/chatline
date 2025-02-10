@@ -28,6 +28,9 @@ GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")  # ใส่ 
 DATABASE_URL = os.getenv("DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY")
 
+print(f"🔍 DEBUG - ADMIN_USER_ID: {os.getenv('ADMIN_USER_ID')}")
+print(f"🔍 DEBUG - GOOGLE_SHEETS_CREDENTIALS: {GOOGLE_SHEETS_CREDENTIALS}")
+
 # พิมพ์ค่าตัวแปรเพื่อตรวจสอบ
 print(f"OPENAI_API_KEY: {OPENAI_API_KEY}")
 print(f"LINE_ACCESS_TOKEN: {LINE_ACCESS_TOKEN}")
