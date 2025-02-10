@@ -25,6 +25,8 @@ LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 ADMIN_USER_ID = os.getenv("ADMIN_USER_ID")  # LINE User ID ของผู้จัดการ
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")  # ใส่ Path ไฟล์ JSON Credentials
+DATABASE_URL = os.getenv("DATABASE_URL")
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # พิมพ์ค่าตัวแปรเพื่อตรวจสอบ
 print(f"OPENAI_API_KEY: {OPENAI_API_KEY}")
@@ -32,6 +34,15 @@ print(f"LINE_ACCESS_TOKEN: {LINE_ACCESS_TOKEN}")
 print(f"LINE_CHANNEL_SECRET: {LINE_CHANNEL_SECRET}")
 print(f"ADMIN_USER_ID: {ADMIN_USER_ID}")
 print(f"GOOGLE_SHEETS_CREDENTIALS: {GOOGLE_SHEETS_CREDENTIALS}")
+print(f"DATABASE_URL: {DATABASE_URL}")
+print(f"SECRET_KEY: {SECRET_KEY}")
+
+# ตรวจสอบว่าอ่านค่าได้จริง
+if not DATABASE_URL:
+    raise ValueError("❌ DATABASE_URL is not set in the environment variables!")
+
+if not SECRET_KEY:
+    raise ValueError("❌ SECRET_KEY is not set in the environment variables!")
 
 # ตรวจสอบค่าที่ต้องใช้
 missing_vars = []
@@ -60,6 +71,7 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 # สร้างแอปพลิเคชัน Flask
 app = Flask(__name__)
+app.config['SECRET_KEY'] = SECRET_KEY  # ตั้งค่า Secret Key ในแอปพลิเคชัน Flask
 CORS(app)  # กำหนดค่า CORS
 
 # ตั้งค่า Google Sheets API
@@ -91,52 +103,35 @@ worksheet_title = 'การตอบแบบฟอร์ม 1'
 
 # ตรวจสอบว่า worksheet ที่ต้องการมีอยู่หรือไม่
 try:
-    worksheet = next(ws for ws in spreadsheet_1.worksheets() if ws.title == worksheet_title)
+    worksheet_1 = next(ws for ws in spreadsheet_1.worksheets() if ws.title == worksheet_title)
     print(f"Worksheet '{worksheet_title}' found in Spreadsheet 1")
 except StopIteration:
     print(f"Worksheet '{worksheet_title}' not found in Spreadsheet 1")
+    worksheet_1 = None
 
 try:
-    worksheet = next(ws for ws in spreadsheet_2.worksheets() if ws.title == worksheet_title)
+    worksheet_2 = next(ws for ws in spreadsheet_2.worksheets() if ws.title == worksheet_title)
     print(f"Worksheet '{worksheet_title}' found in Spreadsheet 2")
 except StopIteration:
     print(f"Worksheet '{worksheet_title}' not found in Spreadsheet 2")
+    worksheet_2 = None
 
-# เปิด worksheet ที่ต้องการ
-worksheet_1 = next(ws for ws in spreadsheet_1.worksheets() if ws.title == worksheet_title)  # เปลี่ยนชื่อชีตถ้าจำเป็น
-worksheet_2 = next(ws for ws in spreadsheet_2.worksheets() if ws.title == worksheet_title)  # เปลี่ยนชื่อชีตถ้าจำเป็น
+# อ่านข้อมูลจาก worksheet ถ้ามี
+if worksheet_1:
+    data_1 = worksheet_1.get_all_values()
+    print("Data from Worksheet 1:")
+    for row in data_1:
+        print(row)
+else:
+    print("No data from Worksheet 1")
 
-# อ่านข้อมูลจาก worksheet
-data_1 = worksheet_1.get_all_values()
-data_2 = worksheet_2.get_all_values()
-
-# พิมพ์ข้อมูลที่อ่านได้
-print("Data from Worksheet 1:")
-for row in data_1:
-    print(row)
-
-print("Data from Worksheet 2:")
-for row in data_2:
-    print(row)
-
-# เปิด worksheet ที่ต้องการ
-SHEET_1 = next(ws for ws in gc.open_by_key(SHEET_1_ID).worksheets() if ws.title == "การตอบแบบฟอร์ม 1")  # เปลี่ยนชื่อชีตถ้าจำเป็น
-SHEET_2 = next(ws for ws in gc.open_by_key(SHEET_2_ID).worksheets() if ws.title == "การตอบแบบฟอร์ม 1")  # เปลี่ยนชื่อชีตถ้าจำเป็น
-
-# Google Forms
-GOOGLE_FORM_1 = "https://forms.gle/va6VXDSw9fTayVDD6"  # แบบประเมินโรคซึมเศร้าด้วย 9 คำถาม
-GOOGLE_FORM_2 = "https://forms.gle/irMiKifUYYKYywku5"  # แบบประเมินการฆ่าตัวตาย (8Q)
-# ลิงก์วิดีโอที่เหมาะสมตามระดับคะแนน
-video_links = {
-    "low": "https://youtu.be/zr3quEuGSAE?si=U_jj_2lrITdbuef4",  # ปกติ
-    "medium": "https://youtu.be/TYSrIpdd2n4?si=stRQ-szINeeo6rdj",  # มีภาวะเครียด
-    "high": "https://youtu.be/wVCtz5nwB0I?si=2dxTcWtcJOHbkq2H"  # ซึมเศร้ารุนแรง
-}
-
-# ฟังก์ชันดึงคะแนนจาก Google Sheets (รองรับ 2 อัน)
-def get_user_score(user_id):
-    # Implement your function here
-    pass
+if worksheet_2:
+    data_2 = worksheet_2.get_all_values()
+    print("Data from Worksheet 2:")
+    for row in data_2:
+        print(row)
+else:
+    print("No data from Worksheet 2")
 
 # ฟังก์ชันส่งข้อความตอบกลับ
 def ReplyMessage(reply_token, text_message):
