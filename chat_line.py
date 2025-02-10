@@ -29,7 +29,15 @@ credentials_base64 = os.getenv("GOOGLE_SHEETS_CREDENTIALS_BASE64")
 # ✅ ตรวจสอบว่า Environment Variable มีค่าหรือไม่
 if not credentials_base64:
     raise ValueError("❌ GOOGLE_SHEETS_CREDENTIALS_BASE64 is not set or is empty!")
+# กำหนด Scope
+scope = ["https://www.googleapis.com/auth/spreadsheets"]
 
+# โหลดไฟล์ Credentials
+with open("path/to/your/service_account.json") as f:
+    creds_json = json.load(f)
+
+# สร้าง Credentials
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
 credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
 credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
 
