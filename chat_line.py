@@ -17,13 +17,13 @@ load_dotenv()
 # Decode Base64 credentials
 credentials_base64 = os.getenv("GOOGLE_SHEETS_CREDENTIALS_BASE64")
 if not credentials_base64:
-    raise ValueError("❌ GOOGLE_SHEETS_CREDENTIALS_BASE64 is not set!")
+    raise ValueError("\u274c GOOGLE_SHEETS_CREDENTIALS_BASE64 is not set!")
 
 try:
     credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
     creds_dict = json.loads(credentials_json)
 except Exception as e:
-    raise ValueError(f"❌ Google Sheets Credentials Error: {str(e)}")
+    raise ValueError(f"\u274c Google Sheets Credentials Error: {str(e)}")
 
 # ใช้ Credentials จาก JSON
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, [
@@ -35,8 +35,10 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, [
 gc = gspread.authorize(creds)
 
 # ตั้งค่า Google Sheets
-SHEET_1_ID = "1C7gh_EuNcSnYLDXB1Z681fLCf9f9kX6a0YN6otoElkg"
+SHEET_1_ID = "1o4OS4or306uOC3DNWTE0nwIN5gfkip4nTPZ-MoTDi2k" #ซึมเศร้า
+SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"
 spreadsheet_1 = gc.open_by_key(SHEET_1_ID)
+spreadsheet_2 = gc.open_by_key(SHEET_2_ID)
 
 # สร้างแอป Flask
 app = Flask(__name__)
@@ -63,7 +65,7 @@ def webhook():
                     if reply_token and user_message:
                         response_message = generate_ai_response(user_message)
                         ReplyMessage(reply_token, response_message)
-                        log_to_google_sheet(user_id, user_message)
+                        log_to_google_sheets(user_id, user_message)
 
             return jsonify({"status": "success"}), 200
         except Exception as e:
@@ -100,11 +102,15 @@ def generate_ai_response(user_message):
     return response["choices"][0]["message"]["content"]
 
 # ฟังก์ชันบันทึกข้อมูลไปยัง Google Sheets
-def log_to_google_sheet(user_id, user_message):
-    google_script_url = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec'
-    data = {'user_id': user_id, 'message': user_message}
+def log_to_google_sheets(user_id, user_message):
+    sheet_1 = spreadsheet_1.sheet1  # ชีตแรกของ SHEET_1
+    sheet_2 = spreadsheet_2.sheet1  # ชีตแรกของ SHEET_2
+    
     try:
-        requests_lib.post(google_script_url, data=data)
+        # บันทึกข้อมูลลงทั้งสองชีต
+        sheet_1.append_row([user_id, user_message])
+        sheet_2.append_row([user_id, user_message])
+        print("Data logged successfully to both sheets")
     except Exception as e:
         print(f"Error logging data: {e}")
 
