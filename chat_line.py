@@ -33,7 +33,7 @@ if not credentials_base64:
 scope = ["https://www.googleapis.com/auth/spreadsheets"]
 
 # โหลดไฟล์ Credentials
-with open("path/to/your/service_account.json") as f:
+with open("meta-vista-446710-b6-b255d6ca278a.json") as f:
     creds_json = json.load(f)
 
 # สร้าง Credentials
