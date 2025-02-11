@@ -9,9 +9,9 @@ import json
 import base64
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from dotenv import load_dotenv
 
 # โหลดค่าตัวแปรจาก .env
-from dotenv import load_dotenv
 load_dotenv()
 
 # Decode Base64 credentials
@@ -36,18 +36,7 @@ gc = gspread.authorize(creds)
 
 # ตั้งค่า Google Sheets
 SHEET_1_ID = "1C7gh_EuNcSnYLDXB1Z681fLCf9f9kX6a0YN6otoElkg"
-SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"
-
 spreadsheet_1 = gc.open_by_key(SHEET_1_ID)
-spreadsheet_2 = gc.open_by_key(SHEET_2_ID)
-
-print("Worksheets in Spreadsheet 1:")
-for worksheet in spreadsheet_1.worksheets():
-    print(worksheet.title)
-
-print("Worksheets in Spreadsheet 2:")
-for worksheet in spreadsheet_2.worksheets():
-    print(worksheet.title)
 
 # สร้างแอป Flask
 app = Flask(__name__)
@@ -72,7 +61,7 @@ def webhook():
                     user_id = event.get('source', {}).get('userId')
                     
                     if reply_token and user_message:
-                        response_message = "Hello from Flask!"
+                        response_message = generate_ai_response(user_message)
                         ReplyMessage(reply_token, response_message)
                         log_to_google_sheet(user_id, user_message)
 
@@ -87,7 +76,8 @@ def ReplyMessage(reply_token, text_message):
     LINE_API = 'https://api.line.me/v2/bot/message/reply'
     headers = {
         'Content-Type': 'application/json',
-        'Authorization': f'Bearer {os.getenv("LINE_ACCESS_TOKEN")}'}
+        'Authorization': f'Bearer {os.getenv("LINE_ACCESS_TOKEN")}'
+    }
     data = {
         "replyToken": reply_token,
         "messages": [{"type": "text", "text": text_message}]
@@ -96,6 +86,18 @@ def ReplyMessage(reply_token, text_message):
         requests_lib.post(LINE_API, headers=headers, json=data)
     except requests_lib.exceptions.RequestException as e:
         print(f"Error sending message: {e}")
+
+# ฟังก์ชันให้บอทใช้ OpenAI GPT ในการตอบข้อความ
+def generate_ai_response(user_message):
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "คุณคือแชทบอทที่เป็นมิตรและช่วยเหลือผู้ใช้"},
+            {"role": "user", "content": user_message}
+        ]
+    )
+    return response["choices"][0]["message"]["content"]
 
 # ฟังก์ชันบันทึกข้อมูลไปยัง Google Sheets
 def log_to_google_sheet(user_id, user_message):
