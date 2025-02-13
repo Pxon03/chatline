@@ -1,7 +1,5 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from linebot import LineBotApi, WebhookHandler
-from linebot.models import TextSendMessage
 import requests as requests_lib
 import os
 import openai
@@ -14,16 +12,20 @@ from dotenv import load_dotenv
 # โหลดค่าตัวแปรจาก .env
 load_dotenv()
 
+# ตั้งค่าลิงก์ Google Forms
+GOOGLE_FORM_1 = "https://forms.gle/va6VXDSw9fTayVDD6"  # แบบประเมินโรคซึมเศร้า (9Q)
+GOOGLE_FORM_2 = "https://forms.gle/irMiKifUYYKYywku5"  # แบบประเมินการฆ่าตัวตาย (8Q)
+
 # Decode Base64 credentials
 credentials_base64 = os.getenv("GOOGLE_SHEETS_CREDENTIALS_BASE64")
 if not credentials_base64:
-    raise ValueError("\u274c GOOGLE_SHEETS_CREDENTIALS_BASE64 is not set!")
+    raise ValueError("❌ GOOGLE_SHEETS_CREDENTIALS_BASE64 is not set!")
 
 try:
     credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
     creds_dict = json.loads(credentials_json)
 except Exception as e:
-    raise ValueError(f"\u274c Google Sheets Credentials Error: {str(e)}")
+    raise ValueError(f"❌ Google Sheets Credentials Error: {str(e)}")
 
 # ใช้ Credentials จาก JSON
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, [
@@ -34,11 +36,19 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, [
 # เชื่อมต่อ Google Sheets
 gc = gspread.authorize(creds)
 
-# ตั้งค่า Google Sheets
-SHEET_1_ID = "1o4OS4or306uOC3DNWTE0nwIN5gfkip4nTPZ-MoTDi2k" #ซึมเศร้า
-SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"
+# Google Sheet ID
+SHEET_1_ID = "1o4OS4or306uOC3DNWTE0nwIN5gfkip4nTPZ-MoTDi2k"  # ซึมเศร้า (9Q)
+SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"  # การฆ่าตัวตาย (8Q)
+
+# เปิด Google Sheets
 spreadsheet_1 = gc.open_by_key(SHEET_1_ID)
 spreadsheet_2 = gc.open_by_key(SHEET_2_ID)
+
+sheet_1 = spreadsheet_1.worksheet("Sheet1")
+sheet_2 = spreadsheet_2.worksheet("Sheet1")
+
+# ตั้งค่า LINE API
+LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 
 # สร้างแอป Flask
 app = Flask(__name__)
@@ -61,11 +71,20 @@ def webhook():
                     message = event.get('message', {})
                     user_message = message.get('text')
                     user_id = event.get('source', {}).get('userId')
-                    
+
                     if reply_token and user_message:
-                        response_message = generate_ai_response(user_message)
-                        ReplyMessage(reply_token, response_message)
-                        log_to_google_sheets(user_id, user_message)
+                        # ตรวจสอบว่าผู้ใช้ต้องการทำแบบสอบถามหรือไม่
+                        if "ทำแบบทดสอบ" in user_message or "แบบสอบถาม" in user_message:
+                            form_message = f"📝 คุณสามารถทำแบบประเมินได้ที่นี่:\n- แบบประเมินโรคซึมเศร้า (9Q): {GOOGLE_FORM_1}\n- แบบประเมินความเสี่ยงฆ่าตัวตาย (8Q): {GOOGLE_FORM_2}"
+                            ReplyMessage(reply_token, form_message)
+                        else:
+                            response_message = generate_ai_response(user_message)
+                            ReplyMessage(reply_token, response_message)
+
+                            # ดึงคะแนนจาก Google Sheets และแจ้งผลให้ผู้ใช้
+                            result_message = get_user_score(user_id)
+                            if result_message:
+                                ReplyMessage(reply_token, result_message)
 
             return jsonify({"status": "success"}), 200
         except Exception as e:
@@ -78,7 +97,7 @@ def ReplyMessage(reply_token, text_message):
     LINE_API = 'https://api.line.me/v2/bot/message/reply'
     headers = {
         'Content-Type': 'application/json',
-        'Authorization': f'Bearer {os.getenv("LINE_ACCESS_TOKEN")}'
+        'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'
     }
     data = {
         "replyToken": reply_token,
@@ -101,18 +120,40 @@ def generate_ai_response(user_message):
     )
     return response["choices"][0]["message"]["content"]
 
-# ฟังก์ชันบันทึกข้อมูลไปยัง Google Sheets
-def log_to_google_sheets(user_id, user_message):
-    sheet_1 = spreadsheet_1.sheet1  # ชีตแรกของ SHEET_1
-    sheet_2 = spreadsheet_2.sheet1  # ชีตแรกของ SHEET_2
-    
+# ฟังก์ชันดึงคะแนนจาก Google Sheets และส่งผลลัพธ์กลับไปให้ผู้ใช้
+def get_user_score(user_id):
     try:
-        # บันทึกข้อมูลลงทั้งสองชีต
-        sheet_1.append_row([user_id, user_message])
-        sheet_2.append_row([user_id, user_message])
-        print("Data logged successfully to both sheets")
+        records_1 = sheet_1.get_all_records()
+        records_2 = sheet_2.get_all_records()
+
+        score_1, risk_1, score_2, risk_2 = None, None, None, None
+
+        for row in records_1:
+            if row['ชื่อ'] == user_id:
+                score_1 = row['คะแนนซึมเศร้า']
+                risk_1 = row['ระดับความเสี่ยงซึมเศร้า']
+
+        for row in records_2:
+            if row['ชื่อ'] == user_id:
+                score_2 = row['คะแนนฆ่าตัวตาย']
+                risk_2 = row['ระดับความเสี่ยงฆ่าตัวตาย']
+
+        if score_1 is not None or score_2 is not None:
+            message = "📊 ผลการประเมินของคุณ:\n"
+            if score_1 is not None:
+                message += f"- ซึมเศร้า (9Q): {score_1} คะแนน (ระดับ: {risk_1})\n"
+            if score_2 is not None:
+                message += f"- ความเสี่ยงฆ่าตัวตาย (8Q): {score_2} คะแนน (ระดับ: {risk_2})\n"
+            
+            message += "🎥 วิดีโอแนะนำ: " + get_video_recommendation(risk_1, risk_2)
+            return message
     except Exception as e:
-        print(f"Error logging data: {e}")
+        print(f"Error fetching user score: {e}")
+    return None
+
+# ฟังก์ชันเลือกวิดีโอตามระดับความเสี่ยง
+def get_video_recommendation(risk_1, risk_2):
+    return "https://youtu.be/example"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
