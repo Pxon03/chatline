@@ -73,6 +73,9 @@ def webhook():
                     user_id = event.get('source', {}).get('userId')
 
                     if reply_token and user_message:
+                        # บันทึกข้อความของผู้ใช้ลง Google Sheets
+                        log_to_google_sheets(user_id, user_message)
+
                         # ตรวจสอบว่าผู้ใช้ต้องการทำแบบสอบถามหรือไม่
                         if "ทำแบบทดสอบ" in user_message or "แบบสอบถาม" in user_message:
                             form_message = f"📝 คุณสามารถทำแบบประเมินได้ที่นี่:\n- แบบประเมินโรคซึมเศร้า (9Q): {GOOGLE_FORM_1}\n- แบบประเมินความเสี่ยงฆ่าตัวตาย (8Q): {GOOGLE_FORM_2}"
@@ -154,6 +157,15 @@ def get_user_score(user_id):
 # ฟังก์ชันเลือกวิดีโอตามระดับความเสี่ยง
 def get_video_recommendation(risk_1, risk_2):
     return "https://youtu.be/example"
+
+# ฟังก์ชันบันทึกข้อความของผู้ใช้ลง Google Sheets
+def log_to_google_sheets(user_id, user_message):
+    try:
+        sheet_1.append_row([user_id, user_message])
+        sheet_2.append_row([user_id, user_message])
+        print("✅ Data logged successfully to both sheets")
+    except Exception as e:
+        print(f"❌ Error logging data: {e}")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
