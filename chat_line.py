@@ -63,8 +63,9 @@ def webhook():
     if request.method == "POST":
         try:
             req = request.json
-            print(f"Received request: {json.dumps(req, ensure_ascii=False)}")
-            
+            print("📩 Received request:")
+            print(json.dumps(req, ensure_ascii=False, indent=2))  # Debug JSON
+
             if 'events' in req:
                 for event in req['events']:
                     reply_token = event.get('replyToken')
@@ -72,11 +73,11 @@ def webhook():
                     user_message = message.get('text')
                     user_id = event.get('source', {}).get('userId')
 
+                    print(f"👤 User ID: {user_id}, 📩 Message: {user_message}")
+
                     if reply_token and user_message:
-                        # บันทึกข้อความของผู้ใช้ลง Google Sheets
                         log_to_google_sheets(user_id, user_message)
 
-                        # ตรวจสอบว่าผู้ใช้ต้องการทำแบบสอบถามหรือไม่
                         if "ทำแบบทดสอบ" in user_message or "แบบสอบถาม" in user_message:
                             form_message = f"📝 คุณสามารถทำแบบประเมินได้ที่นี่:\n- แบบประเมินโรคซึมเศร้า (9Q): {GOOGLE_FORM_1}\n- แบบประเมินความเสี่ยงฆ่าตัวตาย (8Q): {GOOGLE_FORM_2}"
                             ReplyMessage(reply_token, form_message)
@@ -84,16 +85,18 @@ def webhook():
                             response_message = generate_ai_response(user_message)
                             ReplyMessage(reply_token, response_message)
 
-                            # ดึงคะแนนจาก Google Sheets และแจ้งผลให้ผู้ใช้
                             result_message = get_user_score(user_id)
                             if result_message:
                                 ReplyMessage(reply_token, result_message)
 
             return jsonify({"status": "success"}), 200
         except Exception as e:
-            print(f"Error processing request: {e}")
+            import traceback
+            print("❌ Error processing request:")
+            traceback.print_exc()  # Print detailed error
             return jsonify({"error": str(e)}), 500
     return "GET", 200
+
 
 # ฟังก์ชันส่งข้อความกลับไปที่ LINE
 def ReplyMessage(reply_token, text_message):
