@@ -37,15 +37,15 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, [
 gc = gspread.authorize(creds)
 
 # Google Sheet ID
-SHEET_1_ID = "1o4OS4or306uOC3DNWTE0nwIN5gfkip4nTPZ-MoTDi2k"  # ซึมเศร้า (9Q)
+SHEET_1_ID = "1C7gh_EuNcSnYLDXB1Z681fLCf9f9kX6a0YN6otoElkg"  # ซึมเศร้า (9Q)
 SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"  # การฆ่าตัวตาย (8Q)
 
 # เปิด Google Sheets
 spreadsheet_1 = gc.open_by_key(SHEET_1_ID)
 spreadsheet_2 = gc.open_by_key(SHEET_2_ID)
 
-sheet_1 = spreadsheet_1.worksheet("Sheet1")
-sheet_2 = spreadsheet_2.worksheet("Sheet1")
+sheet_1 = spreadsheet_1.worksheet("แบบประเมิน9Q")
+sheet_2 = spreadsheet_2.worksheet("แบบประเมิน8Q")
 
 # ตั้งค่า LINE API
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
