@@ -111,18 +111,6 @@ def ReplyMessage(reply_token, text_message):
     except requests_lib.exceptions.RequestException as e:
         print(f"Error sending message: {e}")
 
-# ฟังก์ชันให้บอทใช้ OpenAI GPT ในการตอบข้อความ
-def generate_ai_response(user_message):
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "คุณคือแชทบอทที่เป็นมิตรและช่วยเหลือผู้ใช้"},
-            {"role": "user", "content": user_message}
-        ]
-    )
-    return response["choices"][0]["message"]["content"]
-
 # ฟังก์ชันดึงคะแนนจาก Google Sheets และส่งผลลัพธ์กลับไปให้ผู้ใช้
 def get_user_score(user_id):
     try:
@@ -148,7 +136,10 @@ def get_user_score(user_id):
             if score_2 is not None:
                 message += f"- ความเสี่ยงฆ่าตัวตาย (8Q): {score_2} คะแนน (ระดับ: {risk_2})\n"
             
-            message += "🎥 วิดีโอแนะนำ: " + get_video_recommendation(risk_1, risk_2)
+            video_link = get_video_recommendation(risk_1, risk_2)
+            if video_link:
+                message += f"🎥 วิดีโอแนะนำ: {video_link}"
+
             return message
     except Exception as e:
         print(f"Error fetching user score: {e}")
@@ -156,7 +147,12 @@ def get_user_score(user_id):
 
 # ฟังก์ชันเลือกวิดีโอตามระดับความเสี่ยง
 def get_video_recommendation(risk_1, risk_2):
-    return "https://youtu.be/example"
+    if risk_2 == "ซึมเศร้ารุนแรง" or risk_1 == "ซึมเศร้ารุนแรง":
+        return "https://youtu.be/wVCtz5nwB0I?si=2dxTcWtcJOHbkq2H"
+    elif risk_2 == "มีภาวะเครียด" or risk_1 == "มีภาวะเครียด":
+        return "https://youtu.be/TYSrIpdd2n4?si=stRQ-szINeeo6rdj"
+    else:
+        return "https://youtu.be/zr3quEuGSAE?si=U_jj_2lrITdbuef4"
 
 # ฟังก์ชันบันทึกข้อความของผู้ใช้ลง Google Sheets
 def log_to_google_sheets(user_id, user_message):
