@@ -45,7 +45,7 @@ spreadsheet_1 = gc.open_by_key(SHEET_1_ID)
 spreadsheet_2 = gc.open_by_key(SHEET_2_ID)
 
 sheet_1 = spreadsheet_1.worksheet("การตอบแบบฟอร์ม 1")
-sheet_2 = spreadsheet_2.worksheet("การตอบแบบฟอร์ม 1")
+sheet_2 = spreadsheet_2.worksheet("แบบประเมินการฆ่าตัวตาย")
 
 # ตั้งค่า LINE API
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
