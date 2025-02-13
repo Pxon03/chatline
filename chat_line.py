@@ -44,8 +44,8 @@ SHEET_2_ID = "1m1Pf7lxMNd4_WpAYvi3o0lBQcnmE-TgEtSpyqFAriJY"  # การฆ่�
 spreadsheet_1 = gc.open_by_key(SHEET_1_ID)
 spreadsheet_2 = gc.open_by_key(SHEET_2_ID)
 
-sheet_1 = spreadsheet_1.worksheet("แบบประเมิน9Q")
-sheet_2 = spreadsheet_2.worksheet("แบบประเมิน8Q")
+sheet_1 = spreadsheet_1.worksheet("แบบประเมินโรคซึมเศร้า (9Q) (การตอบกลับ)")
+sheet_2 = spreadsheet_2.worksheet("แบบประเมินการฆ่าตัวตาย (8Q) (การตอบกลับ)")
 
 # ตั้งค่า LINE API
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
