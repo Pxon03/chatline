@@ -5,10 +5,10 @@ import os
 import json
 import requests
 
-# ดึงค่า API Key และ Line Access Token จาก Environment Variables
+# ตั้งค่าตัวแปร Environment
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
-GOOGLE_SCRIPT_URL = os.getenv("GOOGLE_SCRIPT_URL")  # URL ของ Google Apps Script
+GOOGLE_SCRIPT_URL = os.getenv("GOOGLE_SCRIPT_URL")
 
 if not all([LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, GOOGLE_SCRIPT_URL]):
     raise ValueError("Missing API keys. Please set all required environment variables.")
@@ -19,6 +19,7 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 app = Flask(__name__)
 
+# ส่งข้อความตอบกลับไปที่ LINE
 def ReplyMessage(reply_token, text_message):
     LINE_API = 'https://api.line.me/v2/bot/message/reply'
     headers = {
@@ -35,52 +36,51 @@ def ReplyMessage(reply_token, text_message):
     except requests.exceptions.RequestException as e:
         app.logger.error(f"Error sending reply to LINE API: {e}")
 
-def get_user_info(name, sheet_name):
+# ดึงข้อมูลจาก Google Apps Script
+def get_user_info(name):
     try:
-        params = {
-            "name": name,
-            "sheetName": sheet_name
-        }
+        params = {"name": name}
         response = requests.get(GOOGLE_SCRIPT_URL, params=params)
+        response.raise_for_status()
         data = response.json()
 
         if data.get("status") == "success" and "user_info" in data:
-            return data["user_info"]
-        else:
-            return None
+            return data["user_info"]  # คืนค่ารายการข้อมูลทั้งหมด
+        return None
     except Exception as e:
         app.logger.error(f"Error fetching user info: {e}")
         return None
 
-def format_user_info(name, depression_info, suicide_info):
-    if not depression_info and not suicide_info:
+# สร้างข้อความตอบกลับ
+def format_user_info(name, user_info_list):
+    if not user_info_list:
         return f"❌ ไม่พบข้อมูลของ {name}"
 
     message = f"👤 ข้อมูลของ {name}\n"
-
-    if depression_info:
-        message += (
-            f"[แบบประเมินโรคซึมเศร้า]\n"
-            f"เพศ: {depression_info.get('เพศ', 'ไม่ระบุ')}\n"
-            f"อายุ: {depression_info.get('อายุ', 'ไม่ระบุ')}\n"
-            f"สถานะ: {depression_info.get('สถานะ', 'ไม่ระบุ')}\n"
-            f"คะแนนซึมเศร้า: {depression_info.get('คะแนนซึมเศร้า', 'ไม่ระบุ')}\n"
-            f"ระดับความเสี่ยงซึมเศร้า: {depression_info.get('ระดับความเสี่ยงซึมเศร้า', 'ไม่ระบุ')}\n\n"
-        )
-
-    if suicide_info:
-        message += (
-            f"[แบบประเมินการฆ่าตัวตาย]\n"
-            f"เพศ: {suicide_info.get('เพศ', 'ไม่ระบุ')}\n"
-            f"อายุ: {suicide_info.get('อายุ', 'ไม่ระบุ')}\n"
-            f"สถานะ: {suicide_info.get('สถานะ', 'ไม่ระบุ')}\n"
-            f"คะแนนฆ่าตัวตาย: {suicide_info.get('คะแนนฆ่าตัวตาย', 'ไม่ระบุ')}\n"
-            f"ระดับความเสี่ยงฆ่าตัวตาย: {suicide_info.get('ระดับความเสี่ยงฆ่าตัวตาย', 'ไม่ระบุ')}"
-        )
+    for info in user_info_list:
+        if info.get("sheet") == "ซึมเศร้า":
+            message += (
+                "\n[แบบประเมินโรคซึมเศร้า]\n"
+                f"เพศ: {info.get('เพศ', 'ไม่ระบุ')}\n"
+                f"อายุ: {info.get('อายุ', 'ไม่ระบุ')}\n"
+                f"สถานะ: {info.get('สถานะ', 'ไม่ระบุ')}\n"
+                f"คะแนนซึมเศร้า: {info.get('คะแนนซึมเศร้า', 'ไม่ระบุ')}\n"
+                f"ระดับความเสี่ยงซึมเศร้า: {info.get('ระดับความเสี่ยงซึมเศร้า', 'ไม่ระบุ')}\n"
+            )
+        elif info.get("sheet") == "ฆ่าตัวตาย":
+            message += (
+                "\n[แบบประเมินการฆ่าตัวตาย]\n"
+                f"เพศ: {info.get('เพศ', 'ไม่ระบุ')}\n"
+                f"อายุ: {info.get('อายุ', 'ไม่ระบุ')}\n"
+                f"สถานะ: {info.get('สถานะ', 'ไม่ระบุ')}\n"
+                f"คะแนนฆ่าตัวตาย: {info.get('คะแนนฆ่าตัวตาย', 'ไม่ระบุ')}\n"
+                f"ระดับความเสี่ยงฆ่าตัวตาย: {info.get('ระดับความเสี่ยงฆ่าตัวตาย', 'ไม่ระบุ')}\n"
+            )
 
     return message
 
-@app.route('/webhook', methods=['POST', 'GET']) 
+# รับข้อมูลจาก LINE Webhook
+@app.route('/webhook', methods=['POST', 'GET'])
 def webhook():
     if request.method == "POST":
         try:
@@ -96,12 +96,11 @@ def webhook():
                     if not reply_token or not user_message:
                         continue
 
-                    # ค้นหาข้อมูลจากแต่ละแผ่น
-                    depression_info = get_user_info(user_message, "ซึมเศร้า")
-                    suicide_info = get_user_info(user_message, "ฆ่าตัวตาย")
+                    # ดึงข้อมูลจากทั้ง 2 แผ่น
+                    user_info_list = get_user_info(user_message)
 
                     # สร้างข้อความตอบกลับ
-                    response_message = format_user_info(user_message, depression_info, suicide_info)
+                    response_message = format_user_info(user_message, user_info_list)
 
                     # ส่งข้อความกลับไป
                     ReplyMessage(reply_token, response_message)
