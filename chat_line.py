@@ -6,13 +6,11 @@ import json
 import requests
 
 # ดึงค่า API Key และ Line Access Token จาก Environment Variables
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
-GOOGLE_SCRIPT_URL_DEPRESSED = os.getenv("GOOGLE_SCRIPT_URL_DEPRESSED")  # URL ของ Google Apps Script สำหรับซึมเศร้า
-GOOGLE_SCRIPT_URL_SUICIDE = os.getenv("GOOGLE_SCRIPT_URL_SUICIDE")    # URL ของ Google Apps Script สำหรับฆ่าตัวตาย
+GOOGLE_SCRIPT_URL = os.getenv("GOOGLE_SCRIPT_URL")  # URL ของ Google Apps Script
 
-if not all([LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, GOOGLE_SCRIPT_URL_DEPRESSED, GOOGLE_SCRIPT_URL_SUICIDE]):
+if not all([LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, GOOGLE_SCRIPT_URL]):
     raise ValueError("Missing API keys. Please set all required environment variables.")
 
 # ตั้งค่า LINE Bot API
@@ -37,9 +35,13 @@ def ReplyMessage(reply_token, text_message):
     except requests.exceptions.RequestException as e:
         app.logger.error(f"Error sending reply to LINE API: {e}")
 
-def get_user_info(name, url):
+def get_user_info(name, sheet_name):
     try:
-        response = requests.get(url, params={"name": name})
+        params = {
+            "name": name,
+            "sheetName": sheet_name
+        }
+        response = requests.get(GOOGLE_SCRIPT_URL, params=params)
         data = response.json()
 
         if data.get("status") == "success" and "user_info" in data:
@@ -94,9 +96,9 @@ def webhook():
                     if not reply_token or not user_message:
                         continue
 
-                    # ค้นหาข้อมูลทั้งสองแบบ
-                    depression_info = get_user_info(user_message, GOOGLE_SCRIPT_URL_DEPRESSED)
-                    suicide_info = get_user_info(user_message, GOOGLE_SCRIPT_URL_SUICIDE)
+                    # ค้นหาข้อมูลจากแต่ละแผ่น
+                    depression_info = get_user_info(user_message, "ซึมเศร้า")
+                    suicide_info = get_user_info(user_message, "ฆ่าตัวตาย")
 
                     # สร้างข้อความตอบกลับ
                     response_message = format_user_info(user_message, depression_info, suicide_info)
