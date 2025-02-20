@@ -6,6 +6,7 @@ import json
 import requests
 
 # ดึงค่า API Key และ Line Access Token จาก Environment Variables
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GOOGLE_SCRIPT_URL_DEPRESSED = os.getenv("GOOGLE_SCRIPT_URL_DEPRESSED")  # URL ของ Google Apps Script สำหรับซึมเศร้า
