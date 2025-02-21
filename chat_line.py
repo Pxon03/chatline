@@ -9,8 +9,8 @@ import requests
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GOOGLE_SCRIPT_URL = os.getenv("GOOGLE_SCRIPT_URL")
-
-if not all([LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, GOOGLE_SCRIPT_URL]):
+GOOGLE_SCRIPT_MESSAGE = os.getenv("GOOGLE_SCRIPT_MESSAGE")
+if not all([LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, GOOGLE_SCRIPT_URL, GOOGLE_SCRIPT_MESSAGE]):
     raise ValueError("Missing API keys. Please set all required environment variables.")
 
 # ตั้งค่า LINE Bot API
