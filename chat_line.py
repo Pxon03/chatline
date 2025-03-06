@@ -24,6 +24,53 @@ app = Flask(__name__)
 # ตัวแปรเก็บประวัติการสนทนา
 conversation_history = {}
 
+# ✅ ฟังก์ชันส่ง Flex Message สำหรับแบบประเมิน
+def ReplyAssessmentMessage(reply_token):
+    flex_message = {
+        "type": "flex",
+        "altText": "เลือกแบบประเมินที่ต้องการ 📋",
+        "contents": {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {"type": "text", "text": "เลือกแบบประเมินที่ต้องการ 📋", "weight": "bold", "size": "lg"},
+                    {"type": "text", "text": "กรุณาเลือกแบบประเมินที่ต้องการ", "size": "md", "margin": "md"},
+                ]
+            },
+            "footer": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "sm",
+                "contents": [
+                    {
+                        "type": "button",
+                        "style": "primary",
+                        "color": "#5AACFF",
+                        "action": {"type": "message", "label": "แบบประเมินโรคซึมเศร้า", "text": "แบบประเมินโรคซึมเศร้า"}
+                    },
+                    {
+                        "type": "button",
+                        "style": "primary",
+                        "color": "#FF6B6B",
+                        "action": {"type": "message", "label": "แบบประเมินการฆ่าตัวตาย", "text": "แบบประเมินการฆ่าตัวตาย"}
+                    }
+                ]
+            }
+        }
+    }
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'
+    }
+    data = {
+        "replyToken": reply_token,
+        "messages": [flex_message]
+    }
+    requests.post('https://api.line.me/v2/bot/message/reply', headers=headers, json=data)
+
 # ส่งข้อความตอบกลับไปที่ LINE
 def ReplyMessage(reply_token, text_message):
     if not text_message.strip():
@@ -123,17 +170,20 @@ def webhook():
                     if not reply_token or not user_message:
                         continue
 
-                    # ดึงข้อมูลจาก Google Sheets
-                    user_info_list = get_user_info(user_message)
+                    if user_message == "แบบประเมิน":
+                        ReplyAssessmentMessage(reply_token)
+                    else:
+                        # ดึงข้อมูลจาก Google Sheets
+                        user_info_list = get_user_info(user_message)
 
-                    # สร้างข้อความตอบกลับจาก Google Sheets
-                    response_message = format_user_info(user_message, user_info_list)
+                        # สร้างข้อความตอบกลับจาก Google Sheets
+                        response_message = format_user_info(user_message, user_info_list)
 
-                    if not response_message and user_id:  # ถ้าไม่มีข้อมูลใน Google Sheets ใช้ GPT ตอบแทน
-                        response_message = get_openai_response(user_id, user_message)
+                        if not response_message and user_id:  # ถ้าไม่มีข้อมูลใน Google Sheets ใช้ GPT ตอบแทน
+                            response_message = get_openai_response(user_id, user_message)
 
-                    # ส่งข้อความกลับไป (ถ้า response_message เป็น "", บอทจะไม่ตอบ)
-                    ReplyMessage(reply_token, response_message)
+                        # ส่งข้อความกลับไป (ถ้า response_message เป็น "", บอทจะไม่ตอบ)
+                        ReplyMessage(reply_token, response_message)
 
             return jsonify({"status": "success"}), 200
         except Exception as e:
