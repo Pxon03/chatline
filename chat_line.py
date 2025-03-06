@@ -79,7 +79,7 @@ def format_user_info(name, user_info_list):
 
     return message
 
-ฟังก์ชัน OpenAI สำหรับประมวลผลข้อความ
+# ฟังก์ชัน OpenAI สำหรับประมวลผลข้อความ
 def get_openai_response(user_id, user_message):
     global conversation_history
     history = conversation_history.get(user_id, [])
@@ -101,7 +101,7 @@ def get_openai_response(user_id, user_message):
         app.logger.error(f"Error from OpenAI API: {e}")
         return "เกิดข้อผิดพลาด กรุณาลองใหม่"
 
-รับข้อมูลจาก LINE Webhook
+# รับข้อมูลจาก LINE Webhook
 @app.route('/webhook', methods=['POST', 'GET'])
 def webhook():
     if request.method == "POST":
