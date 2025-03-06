@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 from linebot import LineBotApi, WebhookHandler
-from linebot.models import TextSendMessage
 import os
 import json
 import requests
@@ -9,8 +8,8 @@ import requests
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GOOGLE_SCRIPT_URL = os.getenv("GOOGLE_SCRIPT_URL")
-GOOGLE_SCRIPT_MESSAGE = os.getenv("GOOGLE_SCRIPT_MESSAGE")
-if not all([LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, GOOGLE_SCRIPT_URL, GOOGLE_SCRIPT_MESSAGE]):
+
+if not all([LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, GOOGLE_SCRIPT_URL]):
     raise ValueError("Missing API keys. Please set all required environment variables.")
 
 # ตั้งค่า LINE Bot API
@@ -21,6 +20,9 @@ app = Flask(__name__)
 
 # ส่งข้อความตอบกลับไปที่ LINE
 def ReplyMessage(reply_token, text_message):
+    if not text_message.strip():
+        return  # ถ้าไม่มีข้อความ ไม่ต้องส่งอะไรกลับไป
+
     LINE_API = 'https://api.line.me/v2/bot/message/reply'
     headers = {
         'Content-Type': 'application/json',
@@ -44,9 +46,7 @@ def get_user_info(name):
         response.raise_for_status()
         data = response.json()
 
-        if data.get("status") == "success" and "user_info" in data:
-            return data["user_info"]  # คืนค่ารายการข้อมูลทั้งหมด
-        return None
+        return data.get("user_info") if data.get("status") == "success" else None
     except Exception as e:
         app.logger.error(f"Error fetching user info: {e}")
         return None
@@ -54,7 +54,7 @@ def get_user_info(name):
 # สร้างข้อความตอบกลับ
 def format_user_info(name, user_info_list):
     if not user_info_list:
-        return f"❌ ไม่พบข้อมูลของ {name}"
+        return ""  # ส่งข้อความว่าง เพื่อให้ ReplyMessage() ไม่ส่งอะไรกลับไป
 
     message = f"👤 ข้อมูลของ {name}\n"
     for info in user_info_list:
@@ -79,7 +79,29 @@ def format_user_info(name, user_info_list):
 
     return message
 
-# รับข้อมูลจาก LINE Webhook
+ฟังก์ชัน OpenAI สำหรับประมวลผลข้อความ
+def get_openai_response(user_id, user_message):
+    global conversation_history
+    history = conversation_history.get(user_id, [])
+    history.append({"role": "user", "content": user_message})
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}] + history,
+            max_tokens=200,
+            temperature=0.7,
+            stop=["\n\n"]
+        )
+        bot_reply = response["choices"][0]["message"]["content"]
+        history.append({"role": "assistant", "content": bot_reply})
+        conversation_history[user_id] = history[-10:]  # เก็บประวัติแค่ 10 ข้อความล่าสุด
+        return bot_reply
+    except Exception as e:
+        app.logger.error(f"Error from OpenAI API: {e}")
+        return "เกิดข้อผิดพลาด กรุณาลองใหม่"
+
+รับข้อมูลจาก LINE Webhook
 @app.route('/webhook', methods=['POST', 'GET'])
 def webhook():
     if request.method == "POST":
@@ -90,8 +112,7 @@ def webhook():
             if 'events' in req:
                 for event in req['events']:
                     reply_token = event.get('replyToken')
-                    message = event.get('message', {})
-                    user_message = message.get('text')
+                    user_message = event.get('message', {}).get('text')
 
                     if not reply_token or not user_message:
                         continue
@@ -102,7 +123,7 @@ def webhook():
                     # สร้างข้อความตอบกลับ
                     response_message = format_user_info(user_message, user_info_list)
 
-                    # ส่งข้อความกลับไป
+                    # ส่งข้อความกลับไป (ถ้า response_message เป็น "", บอทจะไม่ตอบ)
                     ReplyMessage(reply_token, response_message)
 
             return jsonify({"status": "success"}), 200
