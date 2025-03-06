@@ -94,7 +94,7 @@ def get_openai_response(user_id, user_message):
         response = openai.ChatCompletion.create(
             model="gpt-4o",
             messages=[{"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}] + history,
-            max_tokens=200,
+            max_tokens=150,
             temperature=0.7,
             stop=["\n\n"]
         )
@@ -112,7 +112,7 @@ def webhook():
     if request.method == "POST":
         try:
             req = request.json
-            app.logger.info(f"Received request: {json.dumps(req, ensure_ascii=False)}")
+            app.logger.debug(f"Received full request: {json.dumps(req, indent=2, ensure_ascii=False)}")
 
             if 'events' in req:
                 for event in req['events']:
