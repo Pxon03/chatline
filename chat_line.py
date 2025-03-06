@@ -48,13 +48,21 @@ def ReplyAssessmentMessage(reply_token):
                         "type": "button",
                         "style": "primary",
                         "color": "#5AACFF",
-                        "action": {"type": "message", "label": "แบบประเมินโรคซึมเศร้า", "text": "แบบประเมินโรคซึมเศร้า"}
+                        "action": {
+                            "type": "uri",
+                            "label": "แบบประเมินโรคซึมเศร้า",
+                            "uri": "https://forms.gle/ZmUfLVDKkjBXAVbx8"
+                        }
                     },
                     {
                         "type": "button",
                         "style": "primary",
                         "color": "#FF6B6B",
-                        "action": {"type": "message", "label": "แบบประเมินการฆ่าตัวตาย", "text": "แบบประเมินการฆ่าตัวตาย"}
+                        "action": {
+                            "type": "uri",
+                            "label": "แบบประเมินการฆ่าตัวตาย",
+                            "uri": "https://forms.gle/jxurYZrY4dGgPUKJA"
+                        }
                     }
                 ]
             }
