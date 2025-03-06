@@ -3,20 +3,26 @@ from linebot import LineBotApi, WebhookHandler
 import os
 import json
 import requests
+import openai
 
 # ตั้งค่าตัวแปร Environment
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GOOGLE_SCRIPT_URL = os.getenv("GOOGLE_SCRIPT_URL")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-if not all([LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, GOOGLE_SCRIPT_URL]):
+if not all([LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, GOOGLE_SCRIPT_URL, OPENAI_API_KEY]):
     raise ValueError("Missing API keys. Please set all required environment variables.")
 
-# ตั้งค่า LINE Bot API
+# ตั้งค่า API Keys
+openai.api_key = OPENAI_API_KEY
 line_bot_api = LineBotApi(LINE_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 app = Flask(__name__)
+
+# ตัวแปรเก็บประวัติการสนทนา
+conversation_history = {}
 
 # ส่งข้อความตอบกลับไปที่ LINE
 def ReplyMessage(reply_token, text_message):
@@ -45,7 +51,6 @@ def get_user_info(name):
         response = requests.get(GOOGLE_SCRIPT_URL, params=params)
         response.raise_for_status()
         data = response.json()
-
         return data.get("user_info") if data.get("status") == "success" else None
     except Exception as e:
         app.logger.error(f"Error fetching user info: {e}")
@@ -87,7 +92,7 @@ def get_openai_response(user_id, user_message):
     
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[{"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}] + history,
             max_tokens=200,
             temperature=0.7,
@@ -112,16 +117,20 @@ def webhook():
             if 'events' in req:
                 for event in req['events']:
                     reply_token = event.get('replyToken')
+                    user_id = event.get('source', {}).get('userId')
                     user_message = event.get('message', {}).get('text')
 
                     if not reply_token or not user_message:
                         continue
 
-                    # ดึงข้อมูลจากทั้ง 2 แผ่น
+                    # ดึงข้อมูลจาก Google Sheets
                     user_info_list = get_user_info(user_message)
 
-                    # สร้างข้อความตอบกลับ
+                    # สร้างข้อความตอบกลับจาก Google Sheets
                     response_message = format_user_info(user_message, user_info_list)
+
+                    if not response_message and user_id:  # ถ้าไม่มีข้อมูลใน Google Sheets ใช้ GPT ตอบแทน
+                        response_message = get_openai_response(user_id, user_message)
 
                     # ส่งข้อความกลับไป (ถ้า response_message เป็น "", บอทจะไม่ตอบ)
                     ReplyMessage(reply_token, response_message)
