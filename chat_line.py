@@ -161,7 +161,7 @@ def webhook():
                             line_bot_api.reply_message(reply_token, TextSendMessage(text="ไม่พบข้อมูลของผู้ใช้ที่คุณค้นหา"))
                         
                         # การสนทนาอื่นๆ
-                        elif user_message in ["โอเคอยู่ มีพลังใช้ได้", "เหนื่อยนิดหน่อย อยากพัก"]:
+                        if user_message in ["โอเคอยู่ มีพลังใช้ได้", "เหนื่อยนิดหน่อย อยากพัก"]:
                             handle_chat(reply_token, 2)  # ถามคำถามถัดไป
                         elif user_message in ["ไม่เป็นไรนะ คุณเก่งมากแล้ว", "พักก่อนก็ได้ เดี๋ยวค่อยไปต่อ"]:
                             handle_chat(reply_token, 3)
