@@ -89,7 +89,6 @@ def ReplyAssessmentMessage(reply_token):
     requests.post('https://api.line.me/v2/bot/message/reply', headers=headers, json=data)
 
 # ✅ ฟังก์ชันส่ง Flex Message สำหรับการพูดคุย
-
 def ReplyChatMessage(reply_token):
     flex_message = {
         "type": "flex",
@@ -169,6 +168,3 @@ def webhook():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=True, host="0.0.0.0", port=port)
-
-เพิ่ม Flex Messsage
-
