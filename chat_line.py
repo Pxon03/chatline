@@ -24,7 +24,43 @@ app = Flask(__name__)
 # ตัวแปรเก็บประวัติการสนทนา
 conversation_history = {}
 
-# ✅ ฟังก์ชันส่ง Flex Message สำหรับแบบประเมิน
+# ✅ ฟังก์ชันส่ง Flex Message สำหรับคำถามและตัวเลือก
+def send_question(reply_token, question, options):
+    flex_message = {
+        "type": "flex",
+        "altText": question,
+        "contents": {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {"type": "text", "text": question, "weight": "bold", "size": "lg"},
+                ]
+            },
+            "footer": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "sm",
+                "contents": [
+                    {"type": "button", "style": "primary", "color": "#5AACFF", "action": {"type": "message", "label": option, "text": option}} 
+                    for option in options
+                ]
+            }
+        }
+    }
+    
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'
+    }
+    data = {
+        "replyToken": reply_token,
+        "messages": [flex_message]
+    }
+    requests.post('https://api.line.me/v2/bot/message/reply', headers=headers, json=data)
+
+# ฟังก์ชันส่ง Flex Message สำหรับแบบประเมิน
 def ReplyAssessmentMessage(reply_token):
     flex_message = {
         "type": "flex",
@@ -140,26 +176,39 @@ def format_user_info(name, user_info_list):
     return message
 
 # ฟังก์ชัน OpenAI สำหรับประมวลผลข้อความ
-# def get_openai_response(user_id, user_message):
-#     global conversation_history
-#     history = conversation_history.get(user_id, [])
-#     history.append({"role": "user", "content": user_message})
+def get_openai_response(user_id, user_message):
+    global conversation_history
+    history = conversation_history.get(user_id, [])
+    history.append({"role": "user", "content": user_message})
     
-#     try:
-#         response = openai.ChatCompletion.create(
-#             model="gpt-4o",
-#             messages=[{"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}] + history,
-#             max_tokens=150,
-#             temperature=0.7,
-#             stop=["\n\n"]
-#         )
-#         bot_reply = response["choices"][0]["message"]["content"]
-#         history.append({"role": "assistant", "content": bot_reply})
-#         conversation_history[user_id] = history[-10:]  # เก็บประวัติแค่ 10 ข้อความล่าสุด
-#         return bot_reply
-#     except Exception as e:
-#         app.logger.error(f"Error from OpenAI API: {e}")
-#         return "เกิดข้อผิดพลาด กรุณาลองใหม่"
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o",
+            messages=[{"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}] + history,
+            max_tokens=150,
+            temperature=0.7,
+            stop=["\n\n"]
+        )
+        bot_reply = response["choices"][0]["message"]["content"]
+        history.append({"role": "assistant", "content": bot_reply})
+        conversation_history[user_id] = history[-10:]  # เก็บประวัติแค่ 10 ข้อความล่าสุด
+        return bot_reply
+    except Exception as e:
+        app.logger.error(f"Error from OpenAI API: {e}")
+        return "เกิดข้อผิดพลาด กรุณาลองใหม่"
+
+# สถานะคำถามที่กำลังถาม
+question_flow = {
+    "ถาม1": ("วันนี้เป็นยังไงบ้าง?", ["โอเคอยู่ มีพลังใช้ได้", "เหนื่อยนิดหน่อย อยากพัก"]),
+    "ถาม2": ("ถ้าตอนนี้มีใครสักคนบอกอะไรให้คุณรู้สึกดีขึ้น คุณอยากได้ยินคำไหนมากกว่า?", ["ไม่เป็นไรนะ คุณเก่งมากแล้ว", "พักก่อนก็ได้ เดี๋ยวค่อยไปต่อ"]),
+    "ถาม3": ("เวลารู้สึกเครียด ๆ คุณอยากให้ตัวเองลองทำอะไร?", ["หลับตาแล้วหายใจลึก ๆ สัก 5 ครั้ง", "ฟังเพลงเงียบ ๆ ให้ใจได้พัก"]),
+    "ถาม4": ("ถ้าต้องเปรียบเทียบความรู้สึกตอนนี้เป็นสีหนึ่งสี คิดว่ามันเป็นสีอะไร?", ["ฟ้า สงบขึ้นมาหน่อย สบาย ๆ", "เทา เหนื่อย ๆ ไม่แน่ใจว่ารู้สึกยังไง"]),
+    "ถาม5": ("ถ้าคุณต้องเขียนจดหมายสั้น ๆ ให้ตัวเองในวันนี้ คุณจะเริ่มต้นด้วยคำว่าอะไร?", ["ขอบคุณที่ยังพยายามอยู่ตรงนี้", "ขอให้พรุ่งนี้ใจดีกับเราหน่อยนะ"]),
+    "ถาม6": ("บางครั้งความเครียดก็มาโดยไม่บอกกล่าว ถ้าต้องเลือกสักอย่าง คุณอยากลอง…", ["หยุดคิดทุกอย่างสักแป๊บ แล้วปล่อยให้ตัวเองพัก", "หาอะไรเล็ก ๆ ที่ทำให้ตัวเองมีความสุข"])
+}
+
+# ตัวแปรเก็บสถานะของผู้ใช้
+user_status = {}
 
 # รับข้อมูลจาก LINE Webhook
 @app.route('/webhook', methods=['POST', 'GET'])
@@ -178,20 +227,33 @@ def webhook():
                     if not reply_token or not user_message:
                         continue
 
-                    if user_message == "แบบประเมิน":
-                        ReplyAssessmentMessage(reply_token)
-                    else:
-                        # ดึงข้อมูลจาก Google Sheets
-                        user_info_list = get_user_info(user_message)
+                    # เริ่มคำถามแรกหากผู้ใช้เริ่มต้นใหม่
+                    if user_message.lower() == "เริ่มต้นใหม่":
+                        user_status[user_id] = "ถาม1"  # กำหนดสถานะเริ่มจากคำถามแรก
+                        send_question(reply_token, *question_flow["ถาม1"])
 
-                        # สร้างข้อความตอบกลับจาก Google Sheets
-                        response_message = format_user_info(user_message, user_info_list)
+                    elif user_id in user_status:
+                        current_question = user_status[user_id]
+                        next_question = None
+                        if current_question == "ถาม1":
+                            next_question = "ถาม2"
+                        elif current_question == "ถาม2":
+                            next_question = "ถาม3"
+                        elif current_question == "ถาม3":
+                            next_question = "ถาม4"
+                        elif current_question == "ถาม4":
+                            next_question = "ถาม5"
+                        elif current_question == "ถาม5":
+                            next_question = "ถาม6"
+                        elif current_question == "ถาม6":
+                            next_question = None  # ไม่มีคำถามถัดไป
 
-                        if not response_message and user_id:  # ถ้าไม่มีข้อมูลใน Google Sheets ใช้ GPT ตอบแทน
-                            response_message = get_openai_response(user_id, user_message)
-
-                        # ส่งข้อความกลับไป (ถ้า response_message เป็น "", บอทจะไม่ตอบ)
-                        ReplyMessage(reply_token, response_message)
+                        if next_question:
+                            user_status[user_id] = next_question
+                            send_question(reply_token, *question_flow[next_question])
+                        else:
+                            # ถ้าไม่มีคำถามถัดไปแสดงข้อความว่าเสร็จสิ้น
+                            ReplyMessage(reply_token, "คุณตอบคำถามทั้งหมดเสร็จสิ้นแล้ว ขอบคุณค่ะ!")
 
             return jsonify({"status": "success"}), 200
         except Exception as e:
