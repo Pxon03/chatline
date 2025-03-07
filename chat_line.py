@@ -257,6 +257,8 @@ def webhook():
                             line_bot_api.reply_message(reply_token, TextSendMessage(text=formatted_info))
                     elif user_message == "โอเคอยู่ มีพลังใช้ได้" or user_message == "เหนื่อยนิดหน่อย อยากพัก":
                         ReplyFollowUpQuestion(reply_token, "ถ้าตอนนี้มีใครสักคนบอกอะไรให้คุณรู้สึกดีขึ้น คุณอยากได้ยินคำไหนมากกว่า?", ["ไม่เป็นไรนะ คุณเก่งมากแล้ว", "พักก่อนก็ได้ เดี๋ยวค่อยไปต่อ"])
+
+
                     elif user_message == "ไม่เป็นไรนะ คุณเก่งมากแล้ว" or user_message == "พักก่อนก็ได้ เดี๋ยวค่อยไปต่อ":
                         ReplyFollowUpQuestion(reply_token, "คุณต้องการให้เราช่วยเหลืออะไรไหม?", ["ส่งคำแนะนำให้", "ให้คำปรึกษาเพิ่มเติม"])
         except Exception as e:
@@ -266,4 +268,5 @@ def webhook():
 
 
 if __name__ == '__main__':
-    app.run(port=5000)
+    port = int(os.environ.get("PORT", 5000))  # Default to 5000 if not specified
+    app.run(host="0.0.0.0", port=port)
