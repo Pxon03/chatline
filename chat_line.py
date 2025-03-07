@@ -24,34 +24,47 @@ app = Flask(__name__)
 # ตัวแปรเก็บประวัติการสนทนา
 conversation_history = {}
 
-# ฟังก์ชันส่ง Flex Message สำหรับการพูดคุย
-def ReplyChatMessage(reply_token, question, options):
-    buttons = [
-        {
-            "type": "button",
-            "style": "primary",
-            "color": "#5AACFF",
-            "action": {"type": "message", "label": option, "text": option}
-        } for option in options
-    ]
+# ✅ ฟังก์ชันส่ง Flex Message สำหรับแบบประเมิน
+def ReplyAssessmentMessage(reply_token):
     flex_message = {
         "type": "flex",
-        "altText": question,
+        "altText": "เลือกแบบประเมินที่ต้องการ 📋",
         "contents": {
             "type": "bubble",
-            "size": "mega",
             "body": {
                 "type": "box",
                 "layout": "vertical",
                 "contents": [
-                    {"type": "text", "text": question, "weight": "bold", "size": "xl", "align": "center"}
+                    {"type": "text", "text": "เลือกแบบประเมินที่ต้องการ 📋", "weight": "bold", "size": "lg"},
+                    {"type": "text", "text": "กรุณาเลือกแบบประเมินที่ต้องการ", "size": "md", "margin": "md"},
                 ]
             },
             "footer": {
                 "type": "box",
                 "layout": "vertical",
                 "spacing": "sm",
-                "contents": buttons
+                "contents": [
+                    {
+                        "type": "button",
+                        "style": "primary",
+                        "color": "#5AACFF",
+                        "action": {
+                            "type": "uri",
+                            "label": "แบบประเมินโรคซึมเศร้า",
+                            "uri": "https://forms.gle/ZmUfLVDKkjBXAVbx8"
+                        }
+                    },
+                    {
+                        "type": "button",
+                        "style": "primary",
+                        "color": "#FF6B6B",
+                        "action": {
+                            "type": "uri",
+                            "label": "แบบประเมินการฆ่าตัวตาย",
+                            "uri": "https://forms.gle/jxurYZrY4dGgPUKJA"
+                        }
+                    }
+                ]
             }
         }
     }
@@ -66,43 +79,42 @@ def ReplyChatMessage(reply_token, question, options):
     }
     requests.post('https://api.line.me/v2/bot/message/reply', headers=headers, json=data)
 
-# ✅ ฟังก์ชันตอบกลับเมื่อพิมพ์ "พูดคุย"
-def handle_chat(reply_token, step):
-    if step == 1:
-        question = "วันนี้เป็นยังไงบ้าง?"
-        options = ["โอเคอยู่ มีพลังใช้ได้", "เหนื่อยนิดหน่อย อยากพัก"]
-        ReplyChatMessage(reply_token, question, options)
-    elif step == 2:
-        question = "ถ้าตอนนี้มีใครสักคนบอกอะไรให้คุณรู้สึกดีขึ้น คุณอยากได้ยินคำไหนมากกว่า?"
-        options = ["ไม่เป็นไรนะ คุณเก่งมากแล้ว", "พักก่อนก็ได้ เดี๋ยวค่อยไปต่อ"]
-        ReplyChatMessage(reply_token, question, options)
-    elif step == 3:
-        question = "เวลารู้สึกเครียด ๆ คุณอยากให้ตัวเองลองทำอะไร?"
-        options = ["หลับตาแล้วหายใจลึก ๆ สัก 5 ครั้ง", "ฟังเพลงเงียบ ๆ ให้ใจได้พัก"]
-        ReplyChatMessage(reply_token, question, options)
-    elif step == 4:
-        question = "ถ้าต้องเปรียบเทียบความรู้สึกตอนนี้เป็นสีหนึ่งสี คิดว่ามันเป็นสีอะไร?"
-        options = ["ฟ้า สงบขึ้นมาหน่อย สบาย ๆ", "เทา เหนื่อย ๆ ไม่แน่ใจว่ารู้สึกยังไง"]
-        ReplyChatMessage(reply_token, question, options)
-    elif step == 5:
-        question = "ถ้าคุณต้องเขียนจดหมายสั้น ๆ ให้ตัวเองในวันนี้ คุณจะเริ่มต้นด้วยคำว่าอะไร?"
-        options = ["ขอบคุณที่ยังพยายามอยู่ตรงนี้", "ขอให้พรุ่งนี้ใจดีกับเราหน่อยนะ"]
-        ReplyChatMessage(reply_token, question, options)
-    elif step == 6:
-        question = "บางครั้งความเครียดก็มาโดยไม่บอกกล่าว ถ้าต้องเลือกสักอย่าง คุณอยากลอง…"
-        options = ["หยุดคิดทุกอย่างสักแป๊บ แล้วปล่อยให้ตัวเองพัก", "หาอะไรเล็ก ๆ ที่ทำให้ตัวเองมีความสุข"]
-        ReplyChatMessage(reply_token, question, options)
+# ส่งข้อความตอบกลับไปที่ LINE
+def ReplyMessage(reply_token, text_message):
+    if not text_message.strip():
+        return  # ถ้าไม่มีข้อความ ไม่ต้องส่งอะไรกลับไป
 
-# ฟังก์ชันค้นหาข้อมูลของผู้ใช้จากชื่อ
+    LINE_API = 'https://api.line.me/v2/bot/message/reply'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'
+    }
+    data = {
+        "replyToken": reply_token,
+        "messages": [{"type": "text", "text": text_message}]
+    }
+    try:
+        response = requests.post(LINE_API, headers=headers, json=data)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Error sending reply to LINE API: {e}")
+
+# ดึงข้อมูลจาก Google Apps Script
 def get_user_info(name):
-    # ตัวอย่างการดึงข้อมูลจาก Google Sheets หรือ API อื่น ๆ
-    # ฟังก์ชันนี้ต้องเปลี่ยนตามวิธีที่คุณใช้ดึงข้อมูล
-    response = requests.get(f"{GOOGLE_SCRIPT_URL}?name={name}")
-    if response.status_code == 200:
-        return response.json()  # สมมติว่าได้ข้อมูลในรูปแบบ JSON
-    return []
+    try:
+        params = {"name": name}
+        response = requests.get(GOOGLE_SCRIPT_URL, params=params)
+        response.raise_for_status()
+        data = response.json()
+        if data.get("status") == "success" and "user_info" in data:
+            return data["user_info"]
+        else:
+            return None
+    except Exception as e:
+        app.logger.error(f"Error fetching user info: {e}")
+        return None
 
-# สร้างข้อความตอบกลับ
+# สร้างข้อความตอบกลับจากข้อมูลผู้ใช้
 def format_user_info(name, user_info_list):
     if not user_info_list:
         return ""  # ส่งข้อความว่าง เพื่อให้ ReplyMessage() ไม่ส่งอะไรกลับไป
@@ -130,6 +142,69 @@ def format_user_info(name, user_info_list):
 
     return message
 
+# ฟังก์ชันการจัดการคำถามและคำตอบ
+def get_next_question(user_id):
+    questions = [
+        ("วันนี้เป็นยังไงบ้าง?", [
+            "โอเคอยู่ มีพลังใช้ได้",
+            "เหนื่อยนิดหน่อย อยากพัก"
+        ]),
+        ("ถ้าตอนนี้มีใครสักคนบอกอะไรให้คุณรู้สึกดีขึ้น คุณอยากได้ยินคำไหนมากกว่า?", [
+            "ไม่เป็นไรนะ คุณเก่งมากแล้ว",
+            "พักก่อนก็ได้ เดี๋ยวค่อยไปต่อ"
+        ]),
+        ("เวลารู้สึกเครียด ๆ คุณอยากให้ตัวเองลองทำอะไร?", [
+            "หลับตาแล้วหายใจลึก ๆ สัก 5 ครั้ง",
+            "ฟังเพลงเงียบ ๆ ให้ใจได้พัก"
+        ]),
+        ("ถ้าต้องเปรียบเทียบความรู้สึกตอนนี้เป็นสีหนึ่งสี คิดว่ามันเป็นสีอะไร?", [
+            "ฟ้า สงบขึ้นมาหน่อย สบาย ๆ",
+            "เทา เหนื่อย ๆ ไม่แน่ใจว่ารู้สึกยังไง"
+        ]),
+        ("ถ้าคุณต้องเขียนจดหมายสั้น ๆ ให้ตัวเองในวันนี้ คุณจะเริ่มต้นด้วยคำว่าอะไร?", [
+            "ขอบคุณที่ยังพยายามอยู่ตรงนี้",
+            "ขอให้พรุ่งนี้ใจดีกับเราหน่อยนะ"
+        ]),
+        ("บางครั้งความเครียดก็มาโดยไม่บอกกล่าว ถ้าต้องเลือกสักอย่าง คุณอยากลอง…", [
+            "หยุดคิดทุกอย่างสักแป๊บ แล้วปล่อยให้ตัวเองพัก",
+            "หาอะไรเล็ก ๆ ที่ทำให้ตัวเองมีความสุข"
+        ])
+    ]
+
+    question, options = questions[len(conversation_history.get(user_id, []))]
+
+    return question, options  # ส่งคำถามพร้อมตัวเลือก
+
+def handle_user_response(user_id, user_message):
+    if user_id not in conversation_history:
+        conversation_history[user_id] = []
+
+    conversation_history[user_id].append(user_message)
+    next_question, options = get_next_question(user_id)
+    return next_question, options
+
+# ฟังก์ชัน OpenAI สำหรับประมวลผลข้อความ
+def get_openai_response(user_id, user_message):
+    global conversation_history
+    history = conversation_history.get(user_id, [])
+    history.append({"role": "user", "content": user_message})
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o mini",
+            messages=[{"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}] + history,
+            max_tokens=150,
+            temperature=0.7,
+            stop=["\n\n"]
+        )
+        bot_reply = response["choices"][0]["message"]["content"]
+        history.append({"role": "assistant", "content": bot_reply})
+        conversation_history[user_id] = history[-10:]  # เก็บประวัติแค่ 10 ข้อความล่าสุด
+        return bot_reply
+    except Exception as e:
+        app.logger.error(f"Error from OpenAI API: {e}")
+        return "เกิดข้อผิดพลาด กรุณาลองใหม่"
+
 # รับข้อมูลจาก LINE Webhook
 @app.route('/webhook', methods=['POST', 'GET'])
 def webhook():
@@ -141,6 +216,7 @@ def webhook():
             if 'events' in req:
                 for event in req['events']:
                     reply_token = event.get('replyToken')
+                    user_id = event.get('source', {}).get('userId')
                     user_message = event.get('message', {}).get('text')
 
                     if not reply_token or not user_message:
@@ -148,38 +224,29 @@ def webhook():
 
                     if user_message == "แบบประเมิน":
                         ReplyAssessmentMessage(reply_token)
-                    elif user_message == "พูดคุย":
-                        handle_chat(reply_token, 1)  # เริ่มต้นที่คำถามแรก
                     else:
-                        # ค้นหาข้อมูลผู้ใช้จากชื่อที่พิมพ์มา
+                        # ดึงข้อมูลจาก Google Sheets
                         user_info_list = get_user_info(user_message)
-                        formatted_info = format_user_info(user_message, user_info_list)
-                        if formatted_info:
-                            line_bot_api.reply_message(reply_token, TextSendMessage(text=formatted_info))
-                        else:
-                            # หากไม่มีข้อมูลแสดงข้อความที่เหมาะสม
-                            line_bot_api.reply_message(reply_token, TextSendMessage(text="ไม่พบข้อมูลของผู้ใช้ที่คุณค้นหา"))
-                        
-                        # การสนทนาอื่นๆ
-                        if user_message in ["โอเคอยู่ มีพลังใช้ได้", "เหนื่อยนิดหน่อย อยากพัก"]:
-                            handle_chat(reply_token, 2)  # ถามคำถามถัดไป
-                        elif user_message in ["ไม่เป็นไรนะ คุณเก่งมากแล้ว", "พักก่อนก็ได้ เดี๋ยวค่อยไปต่อ"]:
-                            handle_chat(reply_token, 3)
-                        elif user_message in ["หลับตาแล้วหายใจลึก ๆ สัก 5 ครั้ง", "ฟังเพลงเงียบ ๆ ให้ใจได้พัก"]:
-                            handle_chat(reply_token, 4)
-                        elif user_message in ["ฟ้า สงบขึ้นมาหน่อย สบาย ๆ", "เทา เหนื่อย ๆ ไม่แน่ใจว่ารู้สึกยังไง"]:
-                            handle_chat(reply_token, 5)
-                        elif user_message in ["ขอบคุณที่ยังพยายามอยู่ตรงนี้", "ขอให้พรุ่งนี้ใจดีกับเราหน่อยนะ"]:
-                            handle_chat(reply_token, 6)
-                        elif user_message in ["หยุดคิดทุกอย่างสักแป๊บ แล้วปล่อยให้ตัวเองพัก", "หาอะไรเล็ก ๆ ที่ทำให้ตัวเองมีความสุข"]:
-                            # เมื่อเลือกเสร็จแล้ว จบการสนทนา
-                            line_bot_api.reply_message(reply_token, TextSendMessage(text="ขอบคุณที่ร่วมสนทนาด้วยกันค่ะ ขอให้คุณรู้สึกดีขึ้นนะคะ 😊"))
+
+                        # สร้างข้อความตอบกลับจาก Google Sheets
+                        response_message = format_user_info(user_message, user_info_list)
+
+                        # ถ้ามีข้อมูลจาก Google Sheets หรือ GPT ก็ส่งกลับ
+                        if not response_message:
+                            next_question, options = handle_user_response(user_id, user_message)
+                            response_message = next_question
+                            # ส่งตัวเลือก
+                            buttons = [{"type": "message", "label": option, "text": option} for option in options]
+                            ReplyMessage(reply_token, response_message)
+                            ReplyMessage(reply_token, buttons)
+
+            return jsonify({"status": "success"}), 200
         except Exception as e:
-            app.logger.error(f"Error processing webhook: {e}")
+            app.logger.error(f"Error processing POST request: {e}")
+            return jsonify({"error": str(e)}), 500
+    elif request.method == "GET":
+        return "GET", 200
 
-    return jsonify({"status": "ok"})
-
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))  # Default to 5000 if not specified
-    app.run(host="0.0.0.0", port=port)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=True, host="0.0.0.0", port=port)
