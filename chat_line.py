@@ -181,29 +181,33 @@ def handle_user_response(user_id, user_message):
 
     conversation_history[user_id].append(user_message)
     next_question, options = get_next_question(user_id)
-    return next_question, options
 
-# ฟังก์ชัน OpenAI สำหรับประมวลผลข้อความ
-def get_openai_response(user_id, user_message):
-    global conversation_history
-    history = conversation_history.get(user_id, [])
-    history.append({"role": "user", "content": user_message})
-    
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4o mini",
-            messages=[{"role": "system", "content": "You are a helpful assistant, YOU MUST RESPOND IN THAI"}] + history,
-            max_tokens=150,
-            temperature=0.7,
-            stop=["\n\n"]
-        )
-        bot_reply = response["choices"][0]["message"]["content"]
-        history.append({"role": "assistant", "content": bot_reply})
-        conversation_history[user_id] = history[-10:]  # เก็บประวัติแค่ 10 ข้อความล่าสุด
-        return bot_reply
-    except Exception as e:
-        app.logger.error(f"Error from OpenAI API: {e}")
-        return "เกิดข้อผิดพลาด กรุณาลองใหม่"
+    # สร้าง Flex message สำหรับคำถามและตัวเลือก
+    flex_message = {
+        "type": "flex",
+        "altText": next_question,
+        "contents": {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {"type": "text", "text": next_question, "weight": "bold", "size": "lg"},
+                ]
+            },
+            "footer": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "sm",
+                "contents": [
+                    {"type": "button", "action": {"type": "message", "label": option, "text": option}} 
+                    for option in options
+                ]
+            }
+        }
+    }
+
+    return flex_message
 
 # รับข้อมูลจาก LINE Webhook
 @app.route('/webhook', methods=['POST', 'GET'])
@@ -233,20 +237,16 @@ def webhook():
 
                         # ถ้ามีข้อมูลจาก Google Sheets หรือ GPT ก็ส่งกลับ
                         if not response_message:
-                            next_question, options = handle_user_response(user_id, user_message)
-                            response_message = next_question
-                            # ส่งตัวเลือก
-                            buttons = [{"type": "message", "label": option, "text": option} for option in options]
-                            ReplyMessage(reply_token, response_message)
-                            ReplyMessage(reply_token, buttons)
+                            flex_message = handle_user_response(user_id, user_message)
+                            response_message = flex_message
+                        
+                        ReplyMessage(reply_token, response_message)
 
-            return jsonify({"status": "success"}), 200
+            return 'OK'
         except Exception as e:
-            app.logger.error(f"Error processing POST request: {e}")
-            return jsonify({"error": str(e)}), 500
-    elif request.method == "GET":
-        return "GET", 200
+            app.logger.error(f"Error in webhook handler: {e}")
+            return 'ERROR'
+    return 'Hello World'
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(debug=True, host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(debug=True)
