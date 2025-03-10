@@ -154,6 +154,18 @@ def handle_conversation(user_id, reply_token, user_message):
         ReplyMessage(reply_token, "ขอบคุณที่พูดคุยกับเรานะ 💙")
         conversation_history.pop(user_id, None)
 
+# ✅ ฟังก์ชันส่งข้อความกลับไปยัง LINE
+def ReplyMessage(reply_token, message):
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'
+    }
+    data = {
+        "replyToken": reply_token,
+        "messages": [{"type": "text", "text": message}] if isinstance(message, str) else [message]
+    }
+    requests.post('https://api.line.me/v2/bot/message/reply', headers=headers, json=data)
+
 @app.route('/webhook', methods=['POST', 'GET'])
 def webhook():
     if request.method == "POST":
