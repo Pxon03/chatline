@@ -126,16 +126,26 @@ def handle_conversation(user_id, reply_token, user_message):
     
     if next_question_index < len(conversation_questions):
         question, options = conversation_questions[next_question_index]
+        
+        # ส่งคำถามเป็นข้อความปกติด้วย เพื่อป้องกันการถูกตัดคำถาม
+        ReplyMessage(reply_token, question)
+        
         flex_message = {
             "type": "flex",
-            "altText": question,
+            "altText": "❓ มีคำถามใหม่ กรุณาเปิดดูใน LINE",
             "contents": {
                 "type": "bubble",
                 "body": {
                     "type": "box",
                     "layout": "vertical",
                     "contents": [
-                        {"type": "text", "text": question, "weight": "bold", "size": "lg"}
+                        {
+                            "type": "text",
+                            "text": question,
+                            "weight": "bold",
+                            "size": "lg",
+                            "wrap": True  # ✅ ทำให้ข้อความไม่ถูกตัด
+                        }
                     ]
                 },
                 "footer": {
@@ -143,8 +153,14 @@ def handle_conversation(user_id, reply_token, user_message):
                     "layout": "vertical",
                     "spacing": "sm",
                     "contents": [
-                        {"type": "button", "action": {"type": "message", "label": option, "text": option}} 
-                        for option in options
+                        {
+                            "type": "button",
+                            "action": {
+                                "type": "message",
+                                "label": option,
+                                "text": option
+                            }
+                        } for option in options
                     ]
                 }
             }
