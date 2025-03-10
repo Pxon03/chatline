@@ -19,7 +19,19 @@ app = Flask(__name__)
 # ตัวแปรเก็บประวัติการสนทนา
 conversation_history = {}
 
-# สร้างข้อความตอบกลับสำหรับข้อมูลของผู้ใช้
+# ดึงข้อมูลจาก Google Apps Script
+def get_user_info(name):
+    try:
+        params = {"name": name}
+        response = requests.get(GOOGLE_SCRIPT_URL, params=params)
+        response.raise_for_status()
+        data = response.json()
+        return data.get("user_info") if data.get("status") == "success" else None
+    except Exception as e:
+        app.logger.error(f"Error fetching user info: {e}")
+        return None
+
+# สร้างข้อความตอบกลับ
 def format_user_info(name, user_info_list):
     if not user_info_list:
         return ""  # ส่งข้อความว่าง เพื่อให้ ReplyMessage() ไม่ส่งอะไรกลับไป
@@ -143,36 +155,48 @@ def webhook():
     if request.method == "POST":
         try:
             req = request.json
-            for event in req.get('events', []):
-                reply_token = event.get('replyToken')
-                user_id = event.get('source', {}).get('userId')
-                user_message = event.get('message', {}).get('text')
+            app.logger.debug(f"Received full request: {json.dumps(req, indent=2, ensure_ascii=False)}")
 
-                if not reply_token or not user_message:
-                    continue
+            if 'events' in req:
+                for event in req['events']:
+                    reply_token = event.get('replyToken')
+                    user_id = event.get('source', {}).get('userId')
+                    user_message = event.get('message', {}).get('text')
 
-                if user_message.startswith("ดูข้อมูลของ"):
-                    name = user_message.replace("ดูข้อมูลของ", "").strip()
-                    user_data = FetchUserData(name)
-                    formatted_info = format_user_info(name, user_data)
-                    ReplyMessage(reply_token, formatted_info)
-                elif user_message == "พูดคุย":
-                    conversation_history[user_id] = []
-                    handle_conversation(user_id, reply_token, user_message)
-                elif user_message == "แบบประเมิน":
-                    ReplyAssessmentMessage(reply_token)
-                elif user_id in conversation_history:
-                    handle_conversation(user_id, reply_token, user_message)
-                else:
-                    ReplyMessage(reply_token, "ขออภัย ฉันไม่เข้าใจคำสั่งนี้")
+                    if not reply_token or not user_message:
+                        continue
 
+                    if user_message == "แบบประเมิน":
+                        ReplyAssessmentMessage(reply_token)
+                    elif user_message == "พูดคุย":
+                        # เริ่มการพูดคุย
+                        conversation_history[user_id] = []  # เริ่มต้นประวัติการสนทนาใหม่
+                        handle_conversation(user_id, reply_token, user_message)
+                    elif user_message.startswith("ดูข้อมูลของ"):
+                        name = user_message.replace("ดูข้อมูลของ", "").strip()
+                        user_data = FetchUserData(name)
+                        formatted_info = format_user_info(name, user_data)
+                        ReplyMessage(reply_token, formatted_info)
+                    else:
+                        # ดึงข้อมูลจาก Google Sheets
+                        user_info_list = get_user_info(user_message)
+
+                        # สร้างข้อความตอบกลับจาก Google Sheets
+                        response_message = format_user_info(user_message, user_info_list)
+
+                        if not response_message and user_id:  # ถ้าไม่มีข้อมูลใน Google Sheets ใช้ GPT ตอบแทน
+                            response_message = get_openai_response(user_id, user_message)
+
+                        # ส่งข้อความกลับไป (ถ้า response_message เป็น "", บอทจะไม่ตอบ)
+                        ReplyMessage(reply_token, response_message)
+
+            return jsonify({"status": "success"}), 200
         except Exception as e:
-            print(f"Error: {e}")
-            return 'Internal Server Error', 500
+            app.logger.error(f"Error processing POST request: {e}")
+            return jsonify({"error": str(e)}), 500
+    elif request.method == "GET":
+        return "GET", 200
 
-    return 'OK', 200
-
-# ✅ รันแอปพลิเคชัน Flask
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))  # ใช้พอร์ตจากตัวแปรสภาพแวดล้อม
-    app.run(debug=True, host='0.0.0.0', port=port)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=True, host="0.0.0.0", port=port)
