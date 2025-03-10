@@ -151,25 +151,28 @@ def webhook():
                 if not reply_token or not user_message:
                     continue
 
-                if user_message == "พูดคุย":
+                if user_message.startswith("ดูข้อมูลของ"):
+                    name = user_message.replace("ดูข้อมูลของ", "").strip()
+                    user_data = FetchUserData(name)
+                    formatted_info = format_user_info(name, user_data)
+                    ReplyMessage(reply_token, formatted_info)
+                elif user_message == "พูดคุย":
                     conversation_history[user_id] = []
                     handle_conversation(user_id, reply_token, user_message)
                 elif user_message == "แบบประเมิน":
                     ReplyAssessmentMessage(reply_token)
-                elif user_message.startswith("ดูข้อมูลของ"):  # หากข้อความเริ่มต้นด้วย 'ดูข้อมูลของ'
-                    name = user_message.replace("ดูข้อมูลของ", "").strip()  # ดึงชื่อจากข้อความ
-                    if name:
-                        user_data = FetchUserData(name)
-                        ReplyMessage(reply_token, user_data)  # ส่งข้อความที่จัดรูปแบบแล้วกลับไป
-                    else:
-                        ReplyMessage(reply_token, "กรุณาระบุชื่อที่ถูกต้อง")
                 elif user_id in conversation_history:
                     handle_conversation(user_id, reply_token, user_message)
                 else:
                     ReplyMessage(reply_token, "ขออภัย ฉันไม่เข้าใจคำสั่งนี้")
 
-            return 'OK'
         except Exception as e:
-            app.logger.error(f"Error in webhook handler: {e}")
-            return 'ERROR'
-    return 'Hello World'
+            print(f"Error: {e}")
+            return 'Internal Server Error', 500
+
+    return 'OK', 200
+
+# ✅ รันแอปพลิเคชัน Flask
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))  # ใช้พอร์ตจากตัวแปรสภาพแวดล้อม
+    app.run(debug=True, host='0.0.0.0', port=port)
