@@ -144,32 +144,35 @@ def ReplyMessage(reply_token, message):
 @app.route('/webhook', methods=['POST', 'GET'])
 def webhook():
     if request.method == "POST":
-    try:
-        req = request.json
-        app.logger.debug(f"Received full request: {json.dumps(req, indent=2, ensure_ascii=False)}")
+        try:
+            req = request.json
+            app.logger.debug(f"Received full request: {json.dumps(req, indent=2, ensure_ascii=False)}")
 
-        if 'events' in req:
-            for event in req['events']:
-                reply_token = event.get('replyToken')
-                user_id = event.get('source', {}).get('userId', "")
-                user_message = event.get('message', {}).get('text', "")
+            if 'events' in req:
+                for event in req['events']:
+                    reply_token = event.get('replyToken')
+                    user_id = event.get('source', {}).get('userId', "")
+                    user_message = event.get('message', {}).get('text', "")
 
-                if not reply_token or not user_message:
-                    continue
+                    if not reply_token or not user_message:
+                        continue
 
-                if user_message == "แบบประเมิน":
-                    ReplyAssessmentMessage(reply_token)
-                elif user_message == "พูดคุย":
-                    conversation_history[user_id] = []  # เริ่มต้นประวัติการสนทนาใหม่
-                    handle_conversation(user_id, reply_token, user_message)
-                else:
+                    if user_message == "แบบประเมิน":
+                        ReplyAssessmentMessage(reply_token)
+                    elif user_message == "พูดคุย":
+                        conversation_history[user_id] = []  # เริ่มต้นประวัติการสนทนาใหม่
+                        handle_conversation(user_id, reply_token, user_message)
+                    else:
                         user_info_list = get_user_info(user_message)
                         response_message = format_user_info(user_message, user_info_list) if user_info_list else "ไม่พบข้อมูล"
                         ReplyMessage(reply_token, response_message)
-                    
-        return jsonify({"status": "success"}), 200
-    except Exception as e:
-        app.logger.error(f"Error processing POST request: {e}")
-        return jsonify({"error": str(e)}), 500
-elif request.method == "GET":
-    return "GET", 200
+
+            return jsonify({"status": "success"}), 200
+        except Exception as e:
+            app.logger.error(f"Error processing POST request: {e}")
+            return jsonify({"error": str(e)}), 500
+    elif request.method == "GET":
+        return "GET", 200
+
+if __name__ == "__main__":
+    app.run(debug=True)
