@@ -174,5 +174,7 @@ def webhook():
     elif request.method == "GET":
         return "GET", 200
 
+# ✅ รัน Flask บน Render
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))  # Render จะกำหนด PORT ผ่าน Environment Variables
+    app.run(host="0.0.0.0", port=port, debug=True)
