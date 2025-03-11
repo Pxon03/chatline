@@ -34,8 +34,8 @@ def get_user_info(name):
 # สร้างข้อความตอบกลับ
 def format_user_info(name, user_info_list):
     if not user_info_list:
-        return ""  # ส่งข้อความว่าง เพื่อให้ ReplyMessage() ไม่ส่งอะไรกลับไป
-
+        return f"ไม่พบข้อมูลของ {name} ในระบบ ❌"
+    
     message = f"👤 ข้อมูลของ {name}\n"
     for info in user_info_list:
         if info.get("sheet") == "ซึมเศร้า":
@@ -59,13 +59,17 @@ def format_user_info(name, user_info_list):
 
     return message
 
-# ฟังก์ชันดึงข้อมูลผู้ใช้จาก Google Apps Script โดยใช้ชื่อผู้ใช้
+# ✅ ฟังก์ชันดึงข้อมูลผู้ใช้จาก Google Apps Script
 def FetchUserData(name):
-    response = requests.get(f"{GOOGLE_SCRIPT_URL}?userName={name}")  # ส่งชื่อผู้ใช้แทน user_id
-    if response.status_code == 200:
-        user_info_list = response.json()
-        return format_user_info(name, user_info_list)  # ใช้ฟังก์ชัน format_user_info ในการจัดรูปแบบข้อมูล
-    return "ไม่สามารถดึงข้อมูลได้"
+    try:
+        response = requests.get(f"{GOOGLE_SCRIPT_URL}?userName={name}")
+        response.raise_for_status()
+        data = response.json()
+        app.logger.debug(f"FetchUserData response: {data}")  # Debugging
+        return data if data else None
+    except Exception as e:
+        app.logger.error(f"Error in FetchUserData: {e}")
+        return None
 
 # ✅ คำถามสำหรับ "พูดคุย"
 conversation_questions = [
@@ -146,7 +150,7 @@ def FetchUserData(user_id):
 # ✅ ฟังก์ชันส่งข้อความกลับไปยัง LINE
 def ReplyMessage(reply_token, message):
     headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
-    data = {"replyToken": reply_token, "messages": [{"type": "text", "text": message}] if isinstance(message, str) else [message]}
+    data = {"replyToken": reply_token, "messages": [{"type": "text", "text": message}]}
     requests.post('https://api.line.me/v2/bot/message/reply', headers=headers, json=data)
 
 # ✅ Webhook ของ Flask
@@ -160,8 +164,8 @@ def webhook():
             if 'events' in req:
                 for event in req['events']:
                     reply_token = event.get('replyToken')
-                    user_id = event.get('source', {}).get('userId')
-                    user_message = event.get('message', {}).get('text')
+                    user_id = event.get('source', {}).get('userId', "")
+                    user_message = event.get('message', {}).get('text', "")
 
                     if not reply_token or not user_message:
                         continue
@@ -169,25 +173,20 @@ def webhook():
                     if user_message == "แบบประเมิน":
                         ReplyAssessmentMessage(reply_token)
                     elif user_message == "พูดคุย":
-                        # เริ่มการพูดคุย
                         conversation_history[user_id] = []  # เริ่มต้นประวัติการสนทนาใหม่
                         handle_conversation(user_id, reply_token, user_message)
                     elif user_message.startswith("ดูข้อมูลของ"):
                         name = user_message.replace("ดูข้อมูลของ", "").strip()
-                        user_data = FetchUserData(name)
-                        formatted_info = format_user_info(name, user_data)
+                        user_data = fetch_user_data(name)
+                        formatted_info = format_user_info(name, user_data) if user_data else "ไม่พบข้อมูล"
                         ReplyMessage(reply_token, formatted_info)
                     else:
-                        # ดึงข้อมูลจาก Google Sheets
                         user_info_list = get_user_info(user_message)
+                        response_message = format_user_info(user_message, user_info_list) if user_info_list else "ไม่พบข้อมูล"
 
-                        # สร้างข้อความตอบกลับจาก Google Sheets
-                        response_message = format_user_info(user_message, user_info_list)
-
-                        if not response_message and user_id:  # ถ้าไม่มีข้อมูลใน Google Sheets ใช้ GPT ตอบแทน
+                        if not response_message and user_id:
                             response_message = get_openai_response(user_id, user_message)
 
-                        # ส่งข้อความกลับไป (ถ้า response_message เป็น "", บอทจะไม่ตอบ)
                         ReplyMessage(reply_token, response_message)
 
             return jsonify({"status": "success"}), 200
