@@ -9,6 +9,7 @@ import openai
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GOOGLE_SCRIPT_URL = os.getenv("GOOGLE_SCRIPT_URL")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 if not all([LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, GOOGLE_SCRIPT_URL]):
     raise ValueError("Missing API keys. Please set all required environment variables.")
