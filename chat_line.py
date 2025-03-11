@@ -175,9 +175,9 @@ def webhook():
                     elif user_message == "พูดคุย":
                         conversation_history[user_id] = []  # เริ่มต้นประวัติการสนทนาใหม่
                         handle_conversation(user_id, reply_token, user_message)
-                    elif user_message.startswith("ดูข้อมูลของ"):
+                   elif user_message.startswith("ดูข้อมูลของ"):
                         name = user_message.replace("ดูข้อมูลของ", "").strip()
-                        user_data = fetch_user_data(name)
+                        user_data = FetchUserData(name)  # ✅ ใช้ชื่อที่ถูกต้อง
                         formatted_info = format_user_info(name, user_data) if user_data else "ไม่พบข้อมูล"
                         ReplyMessage(reply_token, formatted_info)
                     else:
