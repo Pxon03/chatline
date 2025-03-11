@@ -157,45 +157,41 @@ def ReplyMessage(reply_token, message):
 @app.route('/webhook', methods=['POST', 'GET'])
 def webhook():
     if request.method == "POST":
-        try:
-            req = request.json
-            app.logger.debug(f"Received full request: {json.dumps(req, indent=2, ensure_ascii=False)}")
+    try:
+        req = request.json
+        app.logger.debug(f"Received full request: {json.dumps(req, indent=2, ensure_ascii=False)}")
 
-            if 'events' in req:
-                for event in req['events']:
-                    reply_token = event.get('replyToken')
-                    user_id = event.get('source', {}).get('userId', "")
-                    user_message = event.get('message', {}).get('text', "")
+        if 'events' in req:
+            for event in req['events']:
+                reply_token = event.get('replyToken')
+                user_id = event.get('source', {}).get('userId', "")
+                user_message = event.get('message', {}).get('text', "")
 
-                    if not reply_token or not user_message:
-                        continue
+                if not reply_token or not user_message:
+                    continue
 
-                    if user_message == "แบบประเมิน":
-                        ReplyAssessmentMessage(reply_token)
-                    elif user_message == "พูดคุย":
-                        conversation_history[user_id] = []  # เริ่มต้นประวัติการสนทนาใหม่
-                        handle_conversation(user_id, reply_token, user_message)
-                   elif user_message.startswith("ดูข้อมูลของ"):
-                        name = user_message.replace("ดูข้อมูลของ", "").strip()
-                        user_data = FetchUserData(name)  # ✅ ใช้ชื่อที่ถูกต้อง
-                        formatted_info = format_user_info(name, user_data) if user_data else "ไม่พบข้อมูล"
-                        ReplyMessage(reply_token, formatted_info)
-                    else:
-                        user_info_list = get_user_info(user_message)
-                        response_message = format_user_info(user_message, user_info_list) if user_info_list else "ไม่พบข้อมูล"
+                if user_message == "แบบประเมิน":
+                    ReplyAssessmentMessage(reply_token)
+                elif user_message == "พูดคุย":
+                    conversation_history[user_id] = []  # เริ่มต้นประวัติการสนทนาใหม่
+                    handle_conversation(user_id, reply_token, user_message)
+                elif user_message.startswith("ดูข้อมูลของ"):
+                    name = user_message.replace("ดูข้อมูลของ", "").strip()
+                    user_data = FetchUserData(name)  # ✅ ใช้ชื่อที่ถูกต้อง
+                    formatted_info = format_user_info(name, user_data) if user_data else "ไม่พบข้อมูล"
+                    ReplyMessage(reply_token, formatted_info)
+                else:
+                    user_info_list = get_user_info(user_message)
+                    response_message = format_user_info(user_message, user_info_list) if user_info_list else "ไม่พบข้อมูล"
 
-                        if not response_message and user_id:
-                            response_message = get_openai_response(user_id, user_message)
+                    if not response_message and user_id:
+                        response_message = get_openai_response(user_id, user_message)
 
-                        ReplyMessage(reply_token, response_message)
+                    ReplyMessage(reply_token, response_message)
 
-            return jsonify({"status": "success"}), 200
-        except Exception as e:
-            app.logger.error(f"Error processing POST request: {e}")
-            return jsonify({"error": str(e)}), 500
-    elif request.method == "GET":
-        return "GET", 200
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(debug=True, host="0.0.0.0", port=port)
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        app.logger.error(f"Error processing POST request: {e}")
+        return jsonify({"error": str(e)}), 500
+elif request.method == "GET":
+    return "GET", 200
