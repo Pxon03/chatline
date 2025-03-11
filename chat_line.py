@@ -289,7 +289,7 @@ def FetchUserData(user_id):
     return {"error": "ไม่สามารถดึงข้อมูลได้"}
 
 # ฟังก์ชัน OpenAI สำหรับประมวลผลข้อความ
- def get_openai_response(user_id, user_message):
+def get_openai_response(user_id, user_message):
      global conversation_history
      history = conversation_history.get(user_id, [])
      history.append({"role": "user", "content": user_message})
