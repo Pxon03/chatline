@@ -136,9 +136,17 @@ def FetchUserData(user_id):
 
 # ✅ ฟังก์ชันส่งข้อความกลับไปยัง LINE
 def ReplyMessage(reply_token, message):
-    headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
-    data = {"replyToken": reply_token, "messages": [{"type": "text", "text": message}]}
-    requests.post('https://api.line.me/v2/bot/message/reply', headers=headers, json=data)
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'
+    }
+    if isinstance(message, str):  # ถ้าเป็นข้อความธรรมดา
+        data = {"replyToken": reply_token, "messages": [{"type": "text", "text": message}]}
+    else:  # ถ้าเป็น Flex Message
+        data = {"replyToken": reply_token, "messages": [message]}
+
+    response = requests.post('https://api.line.me/v2/bot/message/reply', headers=headers, json=data)
+    print("LINE API Response:", response.status_code, response.text)  # Debug ดู Response
 
 # ✅ Webhook ของ Flask
 @app.route('/webhook', methods=['POST', 'GET'])
