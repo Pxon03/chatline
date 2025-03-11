@@ -56,20 +56,7 @@ def format_user_info(name, user_info_list):
                 f"คะแนนฆ่าตัวตาย: {info.get('คะแนนฆ่าตัวตาย', 'ไม่ระบุ')}\n"
                 f"ระดับความเสี่ยงฆ่าตัวตาย: {info.get('ระดับความเสี่ยงฆ่าตัวตาย', 'ไม่ระบุ')}\n"
             )
-
     return message
-
-# ✅ ฟังก์ชันดึงข้อมูลผู้ใช้จาก Google Apps Script
-def FetchUserData(name):
-    try:
-        response = requests.get(f"{GOOGLE_SCRIPT_URL}?userName={name}")
-        response.raise_for_status()
-        data = response.json()
-        app.logger.debug(f"FetchUserData response: {data}")  # Debugging
-        return data if data else None
-    except Exception as e:
-        app.logger.error(f"Error in FetchUserData: {e}")
-        return None
 
 # ✅ คำถามสำหรับ "พูดคุย"
 conversation_questions = [
@@ -175,20 +162,11 @@ def webhook():
                 elif user_message == "พูดคุย":
                     conversation_history[user_id] = []  # เริ่มต้นประวัติการสนทนาใหม่
                     handle_conversation(user_id, reply_token, user_message)
-                elif user_message.startswith("ดูข้อมูลของ"):
-                    name = user_message.replace("ดูข้อมูลของ", "").strip()
-                    user_data = FetchUserData(name)  # ✅ ใช้ชื่อที่ถูกต้อง
-                    formatted_info = format_user_info(name, user_data) if user_data else "ไม่พบข้อมูล"
-                    ReplyMessage(reply_token, formatted_info)
                 else:
-                    user_info_list = get_user_info(user_message)
-                    response_message = format_user_info(user_message, user_info_list) if user_info_list else "ไม่พบข้อมูล"
-
-                    if not response_message and user_id:
-                        response_message = get_openai_response(user_id, user_message)
-
-                    ReplyMessage(reply_token, response_message)
-
+                        user_info_list = get_user_info(user_message)
+                        response_message = format_user_info(user_message, user_info_list) if user_info_list else "ไม่พบข้อมูล"
+                        ReplyMessage(reply_token, response_message)
+                    
         return jsonify({"status": "success"}), 200
     except Exception as e:
         app.logger.error(f"Error processing POST request: {e}")
