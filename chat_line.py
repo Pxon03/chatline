@@ -13,7 +13,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 if not all([LINE_ACCESS_TOKEN, LINE_CHANNEL_SECRET, GOOGLE_SCRIPT_URL]):
     raise ValueError("Missing API keys. Please set all required environment variables.")
-
+    
+openai.api_key = OPENAI_API_KEY
 line_bot_api = LineBotApi(LINE_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 app = Flask(__name__)
