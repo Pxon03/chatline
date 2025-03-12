@@ -90,7 +90,7 @@ def handle_conversation(user_id, reply_token, user_message):
     conversation_history[user_id].append(user_message)
     next_question_index = len(conversation_history[user_id])
 
-    elif next_question_index <= len(conversation_questions["พูดคุย"]):
+    if next_question_index <= len(conversation_questions["พูดคุย"]):
         question = conversation_questions["พูดคุย"][next_question_index - 1]
         ReplyMessage(reply_token, question)
     elif next_question_index <= len(conversation_questions["สวัสดี"]):
