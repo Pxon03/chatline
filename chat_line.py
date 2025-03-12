@@ -112,7 +112,7 @@ def handle_conversation(user_id, reply_token, user_message):
             ReplyMessage(reply_token, "ถ้ามีอะไรที่อยากพูดคุย สามารถบอกได้นะ 💙")
             conversation_history.pop(user_id, None)
 
-     else user_message == "ผ่อนคลาย":
+    elif user_message == "ผ่อนคลาย":  # ✅ เปลี่ยน else เป็น elif
         if user_id not in conversation_history:
             conversation_history[user_id] = []
 
@@ -125,6 +125,7 @@ def handle_conversation(user_id, reply_token, user_message):
         else:
             ReplyMessage(reply_token, "ถ้ามีอะไรให้ช่วยเหลืออีก สามารถบอกได้นะ 💙")
             conversation_history.pop(user_id, None)
+
 
 
 # ✅ ฟังก์ชันส่งแบบประเมิน (Flex Message)
