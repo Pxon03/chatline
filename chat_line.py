@@ -84,24 +84,48 @@ conversation_questions = {
 
 # ✅ ฟังก์ชันพูดคุย
 def handle_conversation(user_id, reply_token, user_message):
-    if user_id not in conversation_history:
-        conversation_history[user_id] = []
+    if user_message == "พูดคุย":
+        if user_id not in conversation_history:
+            conversation_history[user_id] = []
 
-    conversation_history[user_id].append(user_message)
-    next_question_index = len(conversation_history[user_id])
+        conversation_history[user_id].append(user_message)
+        next_question_index = len(conversation_history[user_id])
 
-    if next_question_index <= len(conversation_questions["พูดคุย"]):
-        question = conversation_questions["พูดคุย"][next_question_index - 1]
-        ReplyMessage(reply_token, question)
-    elif next_question_index <= len(conversation_questions["สวัสดี"]):
-        question = conversation_questions["สวัสดี"][next_question_index - 1]
-        ReplyMessage(reply_token, question)
-    elif next_question_index <= len(conversation_questions["ผ่อนคลาย"]):
-        question = conversation_questions["ผ่อนคลาย"][next_question_index - 1]
-        ReplyMessage(reply_token, question)
-    else:
-        ReplyMessage(reply_token, "ขอบคุณที่พูดคุยกับเรานะ 💙")
-        conversation_history.pop(user_id, None)
+        if next_question_index <= len(conversation_questions["พูดคุย"]):
+            question = conversation_questions["พูดคุย"][next_question_index - 1]
+            ReplyMessage(reply_token, question)
+        else:
+            ReplyMessage(reply_token, "ขอบคุณที่พูดคุยกับเรานะ 💙")
+            conversation_history.pop(user_id, None)
+
+    elif user_message == "สวัสดี":
+        if user_id not in conversation_history:
+            conversation_history[user_id] = []
+
+        conversation_history[user_id].append(user_message)
+        next_question_index = len(conversation_history[user_id])
+
+        if next_question_index <= len(conversation_questions["สวัสดี"]):
+            question = conversation_questions["สวัสดี"][next_question_index - 1]
+            ReplyMessage(reply_token, question)
+        else:
+            ReplyMessage(reply_token, "ถ้ามีอะไรที่อยากพูดคุย สามารถบอกได้นะ 💙")
+            conversation_history.pop(user_id, None)
+
+     elif user_message == "ผ่อนคลาย":
+        if user_id not in conversation_history:
+            conversation_history[user_id] = []
+
+        conversation_history[user_id].append(user_message)
+        next_question_index = len(conversation_history[user_id])
+
+        if next_question_index <= len(conversation_questions["ผ่อนคลาย"]):
+            question = conversation_questions["ผ่อนคลาย"][next_question_index - 1]
+            ReplyMessage(reply_token, question)
+        else:
+            ReplyMessage(reply_token, "ถ้ามีอะไรให้ช่วยเหลืออีก สามารถบอกได้นะ 💙")
+            conversation_history.pop(user_id, None)
+
 
 # ✅ ฟังก์ชันส่งแบบประเมิน (Flex Message)
 def ReplyAssessmentMessage(reply_token):
