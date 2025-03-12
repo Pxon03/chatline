@@ -112,7 +112,7 @@ def handle_conversation(user_id, reply_token, user_message):
             ReplyMessage(reply_token, "ถ้ามีอะไรที่อยากพูดคุย สามารถบอกได้นะ 💙")
             conversation_history.pop(user_id, None)
 
-     elif user_message == "ผ่อนคลาย":
+     else user_message == "ผ่อนคลาย":
         if user_id not in conversation_history:
             conversation_history[user_id] = []
 
