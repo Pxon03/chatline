@@ -88,27 +88,17 @@ def handle_conversation(user_id, reply_token, user_message):
         conversation_history[user_id] = []
 
     conversation_history[user_id].append(user_message)
-    next_question_index = len(conversation_history[user_id]) - 1
+    next_question_index = len(conversation_history[user_id])
 
-    if next_question_index < len(conversation_questions):
-        question, options = conversation_questions[next_question_index]
-
+    if next_question_index <= len(conversation_questions["พูดคุย"]):
+        question = conversation_questions["พูดคุย"][next_question_index - 1]
         ReplyMessage(reply_token, question)
-        flex_message = {
-            "type": "flex",
-            "altText": "❓ มีคำถามใหม่ กรุณาเปิดดูใน LINE",
-            "contents": {
-                "type": "bubble",
-                "body": {"type": "box", "layout": "vertical", "contents": [{"type": "text", "text": question, "weight": "bold", "size": "lg"}]},
-                "footer": {
-                    "type": "box",
-                    "layout": "vertical",
-                    "spacing": "sm",
-                    "contents": [{"type": "button", "action": {"type": "message", "label": option, "text": option}} for option in options]
-                }
-            }
-        }
-        ReplyMessage(reply_token, flex_message)
+    if next_question_index <= len(conversation_questions["สวัสดี"]):
+        question = conversation_questions["สวัสดี"][next_question_index - 1]
+        ReplyMessage(reply_token, question)
+    if next_question_index <= len(conversation_questions["ผ่อนคลาย"]):
+        question = conversation_questions["ผ่อนคลาย"][next_question_index - 1]
+        ReplyMessage(reply_token, question)
     else:
         ReplyMessage(reply_token, "ขอบคุณที่พูดคุยกับเรานะ 💙")
         conversation_history.pop(user_id, None)
